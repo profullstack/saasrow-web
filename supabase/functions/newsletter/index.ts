@@ -103,7 +103,12 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      const { data, error } = await supabase
+      const supabaseAdmin = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+
+      const { data, error } = await supabaseAdmin
         .from('newsletter_subscriptions')
         .insert({ email })
         .select()
