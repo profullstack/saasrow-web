@@ -1,13 +1,8 @@
 # Environment variables
 .env
-.env*.local
-
-# Next.js
-.next/
-next-env.d.ts.bak
-*.tsbuildinfo
 
 # Logs
+.next/
 logs
 *.log
 npm-debug.log*

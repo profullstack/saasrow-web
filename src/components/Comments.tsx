@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 import { Alert } from './Alert'
 import { supabase } from '../lib/supabase'
@@ -48,11 +46,11 @@ export function Comments({ submissionId }: CommentsProps) {
   const fetchComments = async () => {
     setLoading(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/comments?submissionId=${submissionId}`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/comments?submissionId=${submissionId}`
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
       })
 
@@ -99,12 +97,12 @@ export function Comments({ submissionId }: CommentsProps) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/comments`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/comments`
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'Authorization': session
           ? `Bearer ${session.access_token}`
-          : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          : `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       }
 
       const response = await fetch(apiUrl, {

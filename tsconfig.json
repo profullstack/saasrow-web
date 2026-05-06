@@ -23,25 +23,19 @@
     ],
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ]
     },
     "target": "ES2017"
   },
   "include": [
     "next-env.d.ts",
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "app/**/*.ts",
-    "app/**/*.tsx",
-    "next.config.ts",
+    "**/*.ts",
+    "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "supabase/functions",
-    "__tests__",
-    "docs"
+    "node_modules"
   ]
 }

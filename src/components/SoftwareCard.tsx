@@ -1,5 +1,4 @@
-'use client'
-
+import { Link } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { BookmarkButton } from './BookmarkButton'
@@ -87,10 +86,10 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/vote`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vote`
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       }
 
       if (session) {
@@ -160,14 +159,14 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     }
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-click`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-click`
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 300)
 
       await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -209,11 +208,11 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
       setShowCopied(true)
       setTimeout(() => setShowCopied(false), 2000)
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-share`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/track-share`
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ submissionId: software.id }),

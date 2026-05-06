@@ -1,7 +1,5 @@
-'use client'
-
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 
 export function FloatingCTA() {
   const [isVisible, setIsVisible] = useState(false)
@@ -21,7 +19,7 @@ export function FloatingCTA() {
   return (
     <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <Link
-        href="/submit"
+        to="/submit"
         className="group flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-[#4FFFE3] to-[#E0FF04] text-neutral-900 rounded-full font-ubuntu font-bold text-lg shadow-2xl hover:shadow-[0_0_30px_rgba(79,255,227,0.5)] transition-all transform hover:scale-105"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

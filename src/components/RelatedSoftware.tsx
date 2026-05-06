@@ -1,7 +1,5 @@
-'use client'
-
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 interface RelatedSubmission {
@@ -95,7 +93,7 @@ export function RelatedSoftware({ currentId, category, tags = [] }: RelatedSoftw
         {related.map((item) => (
           <Link
             key={item.id}
-            href={`/software/${item.id}`}
+            to={`/software/${item.id}`}
             className="group bg-[#2a2a2a] rounded-xl p-4 hover:bg-[#404040] transition-colors"
           >
             <div className="flex items-start gap-3 mb-3">

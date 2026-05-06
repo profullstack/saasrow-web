@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
 import { supabase } from '../lib/supabase';

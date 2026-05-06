@@ -1,7 +1,5 @@
-'use client'
-
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 import { SoftwareCard } from './SoftwareCard'
 
 interface Software {
@@ -28,7 +26,6 @@ interface SoftwareListingsProps {
   activeCategories: string[]
   activeTags: string[]
   selectedSort: string
-  initialListings?: Software[]
 }
 
 export function SoftwareListings({
@@ -37,27 +34,24 @@ export function SoftwareListings({
   activeCategories,
   activeTags,
   selectedSort,
-  initialListings,
 }: SoftwareListingsProps) {
-  const [listings, setListings] = useState<Software[]>(initialListings ?? [])
-  const [loading, setLoading] = useState(initialListings === undefined)
+  const [listings, setListings] = useState<Software[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (initialListings === undefined) {
-      fetchListings()
-    }
-  }, [initialListings])
+    fetchListings()
+  }, [])
 
   const fetchListings = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions?t=${Date.now()}`
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/submissions?t=${Date.now()}`
       console.log('Fetching from:', apiUrl)
 
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
       })
@@ -165,7 +159,7 @@ export function SoftwareListings({
         <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
           <p className="text-white/70 text-xl font-ubuntu">No software listings available yet.</p>
           <Link
-            href="/submit"
+            to="/submit"
             className="inline-block mt-6 px-8 py-3 rounded-full bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800 font-ubuntu font-bold text-lg hover:opacity-90 transition-opacity"
           >
             Submit Your Software
