@@ -1,4 +1,7 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+'use client'
+
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Menu, X, Heart } from 'lucide-react'
 
@@ -7,8 +10,7 @@ interface HeaderProps {
 }
 
 export function Header({ isManagementPage = false }: HeaderProps) {
-  const location = useLocation()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [activeNav, setActiveNav] = useState('apps')
   const [showSignIn, setShowSignIn] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -33,7 +35,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
   }
 
   const handleLogout = () => {
-    navigate('/')
+    router.push('/')
   }
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -42,12 +44,12 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     setMessage(null)
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-management-link`
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-management-link`
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
         },
         body: JSON.stringify({ email }),
       })
@@ -88,7 +90,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
   return (
     <header className="w-full max-w-[1335px] mx-auto px-4 py-6 md:py-9">
       <div className="flex items-center justify-between">
-        <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+        <Link href="/" onClick={() => setMobileMenuOpen(false)}>
           <img
             className="h-12 md:h-16 w-auto object-contain"
             alt="SaaSRow logo"
@@ -108,7 +110,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           {navigationItems.map((item) => (
             <Link
               key={item.id}
-              to={item.href}
+              href={item.href}
               onClick={() => setActiveNav(item.id)}
               className={`font-roboto text-2xl transition-all ${
                 activeNav === item.id
@@ -121,7 +123,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           ))}
 
           <Link
-            to="/favorites"
+            href="/favorites"
             className="text-white hover:opacity-80 transition-opacity flex items-center gap-2 relative"
             title="My Favorites"
           >
@@ -134,7 +136,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           </Link>
 
           <Link
-            to="/featured"
+            href="/featured"
             className="px-8 py-3 rounded-full bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800 font-roboto text-xl hover:opacity-90 transition-opacity"
           >
             Get Featured
@@ -163,7 +165,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           {navigationItems.map((item) => (
             <Link
               key={item.id}
-              to={item.href}
+              href={item.href}
               onClick={() => {
                 setActiveNav(item.id)
                 setMobileMenuOpen(false)
@@ -179,7 +181,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           ))}
 
           <Link
-            to="/favorites"
+            href="/favorites"
             onClick={() => setMobileMenuOpen(false)}
             className="block w-full text-center px-6 py-3 rounded-full border-2 border-white/50 text-white font-roboto text-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2"
           >
@@ -191,7 +193,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
           </Link>
 
           <Link
-            to="/featured"
+            href="/featured"
             onClick={() => setMobileMenuOpen(false)}
             className="block w-full text-center px-8 py-3 rounded-full bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800 font-roboto text-xl hover:opacity-90 transition-opacity"
           >

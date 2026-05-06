@@ -2,30 +2,30 @@
   "version": "1.0.0",
   "type": "module",
   "name": "anima-project",
-  "description": "A React project using Vite and Supabase",
+  "description": "A Next.js project using Supabase",
   "scripts": {
-    "dev": "vite",
-    "server": "node server.js",
-    "build": "vite build",
-    "preview": "vite preview",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.76.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0",
     "lucide-react": "^0.453.0",
+    "next": "^16.2.4",
     "openai": "^6.7.0",
     "puppeteer": "^24.26.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^6.28.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7"
   },
@@ -44,7 +44,6 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.9.3",
-    "vite": "^6.0.4",
     "vitest": "^4.0.1"
   }
 }

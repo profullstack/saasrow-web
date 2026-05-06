@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, FormEvent, ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 
 export function Footer() {
   const [email, setEmail] = useState('')
@@ -24,11 +26,11 @@ export function Footer() {
     setMessage(null)
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/newsletter`
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email }),
@@ -106,7 +108,7 @@ export function Footer() {
           {navigationLinks.map((link) => (
             <Link
               key={link.label}
-              to={link.href}
+              href={link.href}
               className="font-ubuntu text-white text-base sm:text-lg hover:underline"
             >
               {link.label}
@@ -155,13 +157,13 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white/75 font-ubuntu text-xs sm:text-sm">
           <p className="text-center md:text-left">© 2025 <a href="https://profullstack.com" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-white transition-colors">Profullstack, Inc.</a> All rights reserved.</p>
 
-          <Link to="/" className="order-first md:order-none">
+          <Link href="/" className="order-first md:order-none">
             <img className="h-8 sm:h-10 w-auto" alt="SaaSRow logo" src="/wiresniff-logo-1-1.png" />
           </Link>
 
           <nav className="flex gap-4 sm:gap-8 flex-wrap justify-center">
             {footerLinks.map((link) => (
-              <Link key={link.label} to={link.href} className="hover:underline">
+              <Link key={link.label} href={link.href} className="hover:underline">
                 {link.label}
               </Link>
             ))}
