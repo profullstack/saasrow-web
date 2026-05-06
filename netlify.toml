@@ -1,5 +1,5 @@
 [build]
-command = "npm install && npm run build"
+command = "npm install && rm -rf .next && npm run build"
 publish = ".next"
 
 [[plugins]]
