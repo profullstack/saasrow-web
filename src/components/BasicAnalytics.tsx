@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 
 interface AnalyticsData {
@@ -33,12 +35,12 @@ export function BasicAnalytics({ submissionId, token }: BasicAnalyticsProps) {
     setLoading(true)
     setError(null)
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-analytics`
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-analytics`
       const response = await fetch(
         `${apiUrl}?token=${encodeURIComponent(token)}&submissionId=${submissionId}`,
         {
           headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
           },
         }
       )

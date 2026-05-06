@@ -1,3 +1,5 @@
+'use client'
+
 interface ConfirmDialogProps {
   title: string
   message: string
