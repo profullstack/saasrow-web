@@ -1,0 +1,18 @@
+# gitleaks config for saasrow-web
+# Extends the default ruleset and allowlists known-public client-side
+# analytics keys. These are embedded in the page HTML and served to every
+# visitor (Ahrefs Web Analytics data-key, datafast data-website-id), so they
+# are public identifiers, not secrets.
+
+title = "saasrow-web"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public client-side analytics keys shipped in page HTML (not secrets)"
+regexTarget = "line"
+regexes = [
+  '''data-key="jrCaJNA5B0FqNBQqJOAaYw"''',
+  '''data-website-id="dfid_ymwgZYB7fCWFQQX3c74DG"''',
+]
