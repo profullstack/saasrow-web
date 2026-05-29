@@ -114,6 +114,54 @@ export async function getNewsItem(slug: string): Promise<NewsItem | null> {
   return (data ?? null) as NewsItem | null
 }
 
+export interface BlogPost {
+  id: string
+  slug: string
+  title: string
+  excerpt?: string
+  content?: string
+  author_name?: string
+  author_url?: string
+  featured_image_url?: string
+  featured_image_alt?: string
+  tags?: string[]
+  categories?: string[]
+  source_url?: string
+  published_at: string
+  created_at: string
+}
+
+export async function getBlogList(): Promise<BlogPost[]> {
+  const { createSupabaseServerClient } = await import('./supabaseServer')
+  const sb = await createSupabaseServerClient()
+  const { data, error } = await sb
+    .from('blog_posts')
+    .select('id, slug, title, excerpt, author_name, featured_image_url, tags, published_at, created_at')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+  if (error) {
+    console.error('[api] getBlogList failed', error)
+    return []
+  }
+  return (data ?? []) as BlogPost[]
+}
+
+export async function getBlogPost(slug: string): Promise<BlogPost | null> {
+  const { createSupabaseServerClient } = await import('./supabaseServer')
+  const sb = await createSupabaseServerClient()
+  const { data, error } = await sb
+    .from('blog_posts')
+    .select('*')
+    .eq('status', 'published')
+    .eq('slug', slug)
+    .maybeSingle()
+  if (error) {
+    console.error('[api] getBlogPost failed', error)
+    return null
+  }
+  return (data ?? null) as BlogPost | null
+}
+
 export function getPublicStorageUrl(bucket: string, path: string): string {
   const { url } = requireEnv()
   return `${url}/storage/v1/object/public/${bucket}/${path}`

@@ -116,7 +116,7 @@ export default function AdminPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
-  const [activeTab, setActiveTab] = useState<'submissions' | 'news' | 'newsletter' | 'users' | 'analytics' | 'comments'>('submissions')
+  const [activeTab, setActiveTab] = useState<'submissions' | 'news' | 'newsletter' | 'users' | 'analytics' | 'comments' | 'autoblog'>('submissions')
   const [newsTopic, setNewsTopic] = useState('')
   const [newsTone, setNewsTone] = useState<'casual' | 'professional' | 'technical'>('casual')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -147,6 +147,10 @@ export default function AdminPage() {
   const [generatedBanners, setGeneratedBanners] = useState<string[]>([])
   const [isGeneratingBanners, setIsGeneratingBanners] = useState(false)
   const [selectedBanner, setSelectedBanner] = useState<string | null>(null)
+  const [autoblogWebhookSecret, setAutoblogWebhookSecret] = useState('')
+  const [autoblogEnabled, setAutoblogEnabled] = useState(true)
+  const [loadingAutoblogConfig, setLoadingAutoblogConfig] = useState(false)
+  const [savingAutoblogConfig, setSavingAutoblogConfig] = useState(false)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -418,7 +422,44 @@ export default function AdminPage() {
     if (isAuthenticated && activeTab === 'comments') {
       fetchComments()
     }
+    if (isAuthenticated && activeTab === 'autoblog') {
+      fetchAutoblogConfig()
+    }
   }, [isAuthenticated, activeTab])
+
+  const fetchAutoblogConfig = async () => {
+    setLoadingAutoblogConfig(true)
+    try {
+      const { data } = await supabase.from('autoblog_config').select('webhook_secret, enabled').maybeSingle()
+      if (data) {
+        setAutoblogWebhookSecret(data.webhook_secret ?? '')
+        setAutoblogEnabled(data.enabled ?? true)
+      }
+    } catch (err) {
+      console.error('Failed to fetch autoblog config:', err)
+    } finally {
+      setLoadingAutoblogConfig(false)
+    }
+  }
+
+  const saveAutoblogConfig = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingAutoblogConfig(true)
+    try {
+      const { data: existing } = await supabase.from('autoblog_config').select('id').maybeSingle()
+      if (existing?.id) {
+        await supabase.from('autoblog_config').update({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled }).eq('id', existing.id)
+      } else {
+        await supabase.from('autoblog_config').insert({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled })
+      }
+      setAlertMessage({ type: 'success', message: 'Autoblog configuration saved.' })
+    } catch (err) {
+      console.error('Failed to save autoblog config:', err)
+      setAlertMessage({ type: 'error', message: 'Failed to save configuration.' })
+    } finally {
+      setSavingAutoblogConfig(false)
+    }
+  }
 
   const fetchUsers = async () => {
     setLoadingUsers(true)
@@ -1317,6 +1358,16 @@ export default function AdminPage() {
             >
               Email Broadcast
             </a>
+            <button
+              onClick={() => setActiveTab('autoblog')}
+              className={`px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-full font-ubuntu font-bold transition-all text-sm sm:text-base ${
+                activeTab === 'autoblog'
+                  ? 'bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800'
+                  : 'bg-[#4a4a4a] text-white hover:bg-[#555555]'
+              }`}
+            >
+              Autoblog
+            </button>
           </div>
 
           {activeTab === 'submissions' && (
@@ -2447,6 +2498,94 @@ export default function AdminPage() {
                       ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'autoblog' && (
+            <div className="space-y-8">
+              <div className="bg-[#3a3a3a] rounded-2xl p-6 sm:p-8">
+                <h2 className="text-white text-2xl sm:text-3xl font-bold font-ubuntu mb-2">
+                  Autoblog Webhook Configuration
+                </h2>
+                <p className="text-white/60 font-ubuntu text-sm sm:text-base mb-6">
+                  Configure your crawlproof.com webhook to automatically publish blog posts to{' '}
+                  <span className="text-[#4FFFE3] font-mono">/blog</span>. Point crawlproof.com to the
+                  webhook URL below and paste the shared secret here.
+                </p>
+
+                <div className="bg-[#2e2e2e] rounded-xl p-4 mb-6 border border-white/10">
+                  <p className="text-white/50 font-ubuntu text-xs mb-1">Webhook URL (POST)</p>
+                  <p className="text-[#4FFFE3] font-mono text-sm break-all select-all">
+                    {typeof window !== 'undefined' ? `${window.location.origin}/api/autoblog-webhook` : '/api/autoblog-webhook'}
+                  </p>
+                </div>
+
+                {loadingAutoblogConfig ? (
+                  <p className="text-white/50 font-ubuntu">Loading configuration...</p>
+                ) : (
+                  <form onSubmit={saveAutoblogConfig} className="space-y-5">
+                    <div>
+                      <label className="block text-white/80 font-ubuntu text-sm mb-2">
+                        Webhook Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={autoblogWebhookSecret}
+                        onChange={(e) => setAutoblogWebhookSecret(e.target.value)}
+                        placeholder="Paste the shared secret from crawlproof.com"
+                        className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu font-mono placeholder-white/30 transition"
+                      />
+                      <p className="text-white/40 font-ubuntu text-xs mt-1">
+                        This must match the secret configured on crawlproof.com exactly.
+                        Used to verify Standard Webhooks HMAC-SHA256 signatures.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setAutoblogEnabled(!autoblogEnabled)}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${autoblogEnabled ? 'bg-[#4FFFE3]' : 'bg-white/20'}`}
+                      >
+                        <span
+                          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoblogEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                        />
+                      </button>
+                      <span className="text-white/80 font-ubuntu text-sm">
+                        Webhook {autoblogEnabled ? 'enabled' : 'disabled'}
+                      </span>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={savingAutoblogConfig}
+                      className="px-8 py-3 rounded-full bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800 font-ubuntu font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {savingAutoblogConfig ? 'Saving...' : 'Save Configuration'}
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              <div className="bg-[#3a3a3a] rounded-2xl p-6 sm:p-8">
+                <h3 className="text-white text-xl font-bold font-ubuntu mb-3">How it works</h3>
+                <ol className="space-y-3 text-white/70 font-ubuntu text-sm list-decimal list-inside">
+                  <li>Copy the <span className="text-[#4FFFE3]">Webhook URL</span> above and paste it into crawlproof.com as your publish target.</li>
+                  <li>crawlproof.com generates a shared secret — copy it and paste it in the <span className="text-[#4FFFE3]">Webhook Secret</span> field above.</li>
+                  <li>When crawlproof.com publishes a post, it sends a signed CloudEvents payload to your webhook URL.</li>
+                  <li>Your site verifies the signature and saves the post automatically to the <span className="text-[#4FFFE3]">/blog</span> page.</li>
+                </ol>
+                <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-3">
+                  <a
+                    href="/blog"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-2 rounded-full bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu font-bold hover:bg-[#4FFFE3]/30 transition-colors text-sm"
+                  >
+                    View Blog
+                  </a>
+                </div>
               </div>
             </div>
           )}

@@ -1,0 +1,143 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { Header } from '../components/Header'
+import { Footer } from '../components/Footer'
+import { supabase } from '../lib/supabase'
+
+interface BlogPost {
+  id: string
+  slug: string
+  title: string
+  excerpt?: string
+  author_name?: string
+  featured_image_url?: string
+  tags?: string[]
+  published_at: string
+  created_at: string
+}
+
+interface BlogPageProps {
+  initialPosts?: BlogPost[]
+}
+
+export default function BlogPage({ initialPosts }: BlogPageProps = {}) {
+  const [posts, setPosts] = useState<BlogPost[]>(initialPosts ?? [])
+  const [loading, setLoading] = useState(initialPosts === undefined)
+
+  useEffect(() => {
+    if (initialPosts === undefined) {
+      fetchPosts()
+    }
+  }, [initialPosts])
+
+  const fetchPosts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('blog_posts')
+        .select('id, slug, title, excerpt, author_name, featured_image_url, tags, published_at, created_at')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+
+      if (error) throw error
+      setPosts(data || [])
+    } catch (err) {
+      console.error('Failed to fetch blog posts:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-800 relative">
+      <div className="absolute w-full h-1/2 top-[7.45%] left-0 pointer-events-none">
+        <div className="absolute w-4/5 h-40 top-1/3 left-[12.93%] bg-[#4fffe34c] rotate-[37.69deg] blur-[150px]" />
+        <div className="absolute w-4/5 h-40 top-1/4 left-[22.59%] bg-[#4fffe34c] rotate-[37.69deg] blur-[150px]" />
+      </div>
+
+      <div className="relative z-10">
+        <Header />
+
+        <main className="w-full max-w-[1000px] mx-auto px-4 py-12">
+          <div className="text-center mb-12">
+            <h1 className="text-white text-5xl font-bold font-ubuntu mb-4">Blog</h1>
+            <p className="text-white/70 text-xl font-ubuntu max-w-2xl mx-auto">
+              Articles, guides, and insights about software and productivity
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {loading ? (
+              <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
+                <p className="text-white/70 font-ubuntu text-xl">Loading posts...</p>
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
+                <p className="text-white/70 font-ubuntu text-xl">No blog posts yet — check back soon</p>
+              </div>
+            ) : (
+              posts.map((post) => (
+                <Link
+                  key={post.id}
+                  href={`/blog/${post.slug}`}
+                  className="block bg-[#3a3a3a] rounded-2xl overflow-hidden hover:bg-[#404040] transition-colors cursor-pointer"
+                >
+                  <article>
+                    {post.featured_image_url && (
+                      <div className="w-full h-48 overflow-hidden">
+                        <img
+                          src={post.featured_image_url}
+                          alt={post.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="p-8">
+                      <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <p className="text-[#4FFFE3] font-ubuntu text-sm">
+                          {new Date(post.published_at || post.created_at).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                          })}
+                        </p>
+                        {post.author_name && (
+                          <span className="text-white/40 font-ubuntu text-sm">· {post.author_name}</span>
+                        )}
+                      </div>
+                      <h2 className="text-white text-3xl font-bold font-ubuntu mb-3">{post.title}</h2>
+                      {post.excerpt && (
+                        <p className="text-white/70 font-ubuntu text-lg mb-4">{post.excerpt}</p>
+                      )}
+                      {(post.tags?.length ?? 0) > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {post.tags!.slice(0, 4).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-3 py-1 rounded-full bg-white/10 text-white/60 font-ubuntu text-xs"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-[#4FFFE3] font-ubuntu">
+                        <span>Read more</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </article>
+                </Link>
+              ))
+            )}
+          </div>
+        </main>
+
+        <Footer />
+      </div>
+    </div>
+  )
+}
