@@ -47,7 +47,7 @@ Deno.serve(async (req: Request) => {
     )
 
     const { data, error } = await supabase.rpc('increment_view_count', {
-      submission_id: submissionId
+      p_submission_id: submissionId
     })
 
     if (error) {
