@@ -46,6 +46,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           strategy="afterInteractive"
           defer
         />
+              <Script data-site="f2463c61-25b8-47af-bf2a-096563b37bf5" src="https://crawlproof.com/stats.js" strategy="afterInteractive" />
       </body>
     </html>
   )
