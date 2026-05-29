@@ -76,29 +76,36 @@ export default function EmailBroadcast() {
     try {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
       const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      const adminToken = sessionStorage.getItem('adminToken') ?? ''
 
       const emailSet = new Set<string>()
 
       if (aud === 'newsletter' || aud === 'all') {
         const res = await fetch(
           `${supabaseUrl}/functions/v1/newsletter?all=true`,
-          { headers: { Authorization: `Bearer ${anonKey}` } }
+          { headers: { Authorization: `Bearer ${anonKey}`, 'X-Admin-Token': adminToken } }
         )
         if (res.ok) {
-          const data = await res.json()
-          const active = (data.subscribers ?? []).filter((s: { is_active: boolean; email: string }) => s.is_active)
-          for (const s of active) emailSet.add(s.email.toLowerCase())
+          const json = await res.json()
+          // newsletter returns { data: [...] }
+          const rows: { is_active: boolean; email: string }[] = json.data ?? json.subscribers ?? []
+          for (const s of rows) if (s.is_active) emailSet.add(s.email.toLowerCase())
         }
       }
 
       if (aud === 'users' || aud === 'all') {
         const res = await fetch(
           `${supabaseUrl}/functions/v1/get-admin-users`,
-          { headers: { Authorization: `Bearer ${anonKey}` } }
+          { headers: { Authorization: `Bearer ${anonKey}`, 'X-Admin-Token': adminToken } }
         )
         if (res.ok) {
-          const data = await res.json()
-          for (const t of data.tokens ?? []) if (t.email) emailSet.add(t.email.toLowerCase())
+          const json = await res.json()
+          for (const t of json.tokens ?? []) if (t.email) emailSet.add(t.email.toLowerCase())
+          // also count emails from submission_contacts via submissions
+          for (const s of json.submissions ?? []) {
+            const email = s.submission_contacts?.email ?? s.email
+            if (email) emailSet.add(email.toLowerCase())
+          }
         }
       }
 
