@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
-import { supabase } from '../lib/supabase'
 
 interface Submission {
   id: string
@@ -430,11 +430,29 @@ export default function AdminPage() {
   const fetchAutoblogConfig = async () => {
     setLoadingAutoblogConfig(true)
     try {
-      const { data } = await supabase.from('autoblog_config').select('webhook_secret, enabled').maybeSingle()
-      if (data) {
-        setAutoblogWebhookSecret(data.webhook_secret ?? '')
-        setAutoblogEnabled(data.enabled ?? true)
+      const token = sessionStorage.getItem('adminToken')
+      if (!token) {
+        setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+        return
       }
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-autoblog-config`
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'X-Admin-Token': token,
+        },
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to load configuration')
+      }
+
+      const data = await response.json()
+      setAutoblogWebhookSecret(data.webhook_secret ?? '')
+      setAutoblogEnabled(data.enabled ?? true)
     } catch (err) {
       console.error('Failed to fetch autoblog config:', err)
     } finally {
@@ -446,12 +464,28 @@ export default function AdminPage() {
     e.preventDefault()
     setSavingAutoblogConfig(true)
     try {
-      const { data: existing } = await supabase.from('autoblog_config').select('id').maybeSingle()
-      if (existing?.id) {
-        await supabase.from('autoblog_config').update({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled }).eq('id', existing.id)
-      } else {
-        await supabase.from('autoblog_config').insert({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled })
+      const token = sessionStorage.getItem('adminToken')
+      if (!token) {
+        setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+        return
       }
+
+      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-autoblog-config`
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'X-Admin-Token': token,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to save configuration')
+      }
+
       setAlertMessage({ type: 'success', message: 'Autoblog configuration saved.' })
     } catch (err) {
       console.error('Failed to save autoblog config:', err)
