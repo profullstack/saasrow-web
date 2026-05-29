@@ -1311,6 +1311,12 @@ export default function AdminPage() {
             >
               Comments
             </button>
+            <a
+              href="/admin/email-broadcast"
+              className="px-4 sm:px-6 lg:px-8 py-2 sm:py-3 rounded-full font-ubuntu font-bold transition-all text-sm sm:text-base bg-[#4a4a4a] text-white hover:bg-[#555555]"
+            >
+              Email Broadcast
+            </a>
           </div>
 
           {activeTab === 'submissions' && (
