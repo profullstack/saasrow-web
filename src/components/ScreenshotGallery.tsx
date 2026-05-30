@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 
 interface Screenshot {
   id: string
@@ -26,13 +25,9 @@ export function ScreenshotGallery({ submissionId }: ScreenshotGalleryProps) {
 
   const fetchScreenshots = async () => {
     try {
-      const { data, error } = await supabase
-        .from('submission_screenshots')
-        .select('*')
-        .eq('submission_id', submissionId)
-        .order('captured_at', { ascending: true })
-
-      if (error) throw error
+      const res = await fetch(`/api/screenshots?submissionId=${encodeURIComponent(submissionId)}`)
+      const json = await res.json()
+      const data = json.data as Screenshot[] | undefined
 
       setScreenshots(data || [])
     } catch (error) {

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
@@ -539,44 +538,21 @@ export default function AdminPage() {
       onConfirm: async () => {
         setConfirmDialog(null)
         try {
-          const { data: existingToken } = await supabase
-            .from('user_tokens')
-            .select('id')
-            .eq('email', email)
-            .maybeSingle()
-
-          if (existingToken) {
-            const { error } = await supabase
-              .from('user_tokens')
-              .update({ tier: newTier })
-              .eq('email', email)
-
-            if (error) throw error
-          } else {
-            const { error } = await supabase
-              .from('user_tokens')
-              .insert({
-                email,
-                tier: newTier,
-                expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-              })
-
-            if (error) throw error
+          const adminToken = sessionStorage.getItem('adminToken')
+          if (!adminToken) {
+            setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+            return
           }
 
-          const { data: contacts } = await supabase
-            .from('submission_contacts')
-            .select('submission_id')
-            .eq('email', email)
+          const response = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'upgrade', email, tier: newTier }),
+          })
 
-          if (contacts && contacts.length > 0) {
-            const submissionIds = contacts.map(c => c.submission_id)
-            const { error: updateSubmissionsError } = await supabase
-              .from('software_submissions')
-              .update({ tier: newTier })
-              .in('id', submissionIds)
-
-            if (updateSubmissionsError) throw updateSubmissionsError
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to upgrade user')
           }
 
           setAlertMessage({ type: 'success', message: `User upgraded to ${newTier} successfully!` })
@@ -597,26 +573,21 @@ export default function AdminPage() {
       onConfirm: async () => {
         setConfirmDialog(null)
         try {
-          const { error: deleteTokenError } = await supabase
-            .from('user_tokens')
-            .delete()
-            .eq('email', email)
+          const adminToken = sessionStorage.getItem('adminToken')
+          if (!adminToken) {
+            setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+            return
+          }
 
-          if (deleteTokenError) throw deleteTokenError
+          const response = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'downgrade', email }),
+          })
 
-          const { data: contacts } = await supabase
-            .from('submission_contacts')
-            .select('submission_id')
-            .eq('email', email)
-
-          if (contacts && contacts.length > 0) {
-            const submissionIds = contacts.map(c => c.submission_id)
-            const { error: updateSubmissionsError } = await supabase
-              .from('software_submissions')
-              .update({ tier: 'free' })
-              .in('id', submissionIds)
-
-            if (updateSubmissionsError) throw updateSubmissionsError
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to downgrade user')
           }
 
           setAlertMessage({ type: 'success', message: 'User downgraded to free tier successfully!' })
@@ -637,49 +608,22 @@ export default function AdminPage() {
       onConfirm: async () => {
         setConfirmDialog(null)
         try {
-          const { data: contacts } = await supabase
-            .from('submission_contacts')
-            .select('submission_id')
-            .eq('email', email)
-
-          if (contacts && contacts.length > 0) {
-            const submissionIds = contacts.map(c => c.submission_id)
-
-            await supabase
-              .from('social_links')
-              .delete()
-              .in('submission_id', submissionIds)
-
-            await supabase
-              .from('submission_clicks')
-              .delete()
-              .in('submission_id', submissionIds)
-
-            await supabase
-              .from('submission_analytics_daily')
-              .delete()
-              .in('submission_id', submissionIds)
-
-            await supabase
-              .from('submission_screenshots')
-              .delete()
-              .in('submission_id', submissionIds)
-
-            await supabase
-              .from('submission_contacts')
-              .delete()
-              .in('submission_id', submissionIds)
-
-            await supabase
-              .from('software_submissions')
-              .delete()
-              .in('id', submissionIds)
+          const adminToken = sessionStorage.getItem('adminToken')
+          if (!adminToken) {
+            setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+            return
           }
 
-          await supabase
-            .from('user_tokens')
-            .delete()
-            .eq('email', email)
+          const response = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'X-Admin-Token': adminToken, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'delete', email }),
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Failed to delete user account')
+          }
 
           setAlertMessage({ type: 'success', message: 'User account and all data deleted successfully!' })
           fetchUsers()
@@ -731,32 +675,28 @@ export default function AdminPage() {
 
     if (!userSubmissions[email]) {
       try {
-        const { data: contacts } = await supabase
-          .from('submission_contacts')
-          .select('submission_id')
-          .eq('email', email)
-
-        if (!contacts || contacts.length === 0) {
-          setUserSubmissions(prev => ({
-            ...prev,
-            [email]: []
-          }))
+        const adminToken = sessionStorage.getItem('adminToken')
+        if (!adminToken) {
+          setAlertMessage({ type: 'error', message: 'Admin authentication required' })
           return
         }
 
-        const submissionIds = contacts.map(c => c.submission_id)
+        const response = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'X-Admin-Token': adminToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'submissions', email }),
+        })
 
-        const { data, error } = await supabase
-          .from('software_submissions')
-          .select('*')
-          .in('id', submissionIds)
-          .order('created_at', { ascending: false })
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to load user submissions')
+        }
 
-        if (error) throw error
+        const result = await response.json()
 
         setUserSubmissions(prev => ({
           ...prev,
-          [email]: data as Submission[]
+          [email]: (result.data || []) as Submission[]
         }))
       } catch (error) {
         console.error('Failed to fetch user submissions:', error)

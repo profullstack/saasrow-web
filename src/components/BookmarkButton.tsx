@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Heart } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { trackEvent, analyticsEvents } from '../lib/analytics';
 
 interface BookmarkButtonProps {
@@ -49,15 +48,12 @@ export function BookmarkButton({ submissionId, size = 'md', showLabel = false, s
     if (!userId) return;
 
     try {
-      const { data, error } = await supabase
-        .from('favorites')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('submission_id', submissionId)
-        .maybeSingle();
-
-      if (error) throw error;
-      setIsBookmarked(!!data);
+      const res = await fetch(
+        `/api/favorites?userId=${encodeURIComponent(userId)}&submissionId=${encodeURIComponent(submissionId)}`
+      );
+      const { data, error } = await res.json();
+      if (error) throw new Error(error);
+      setIsBookmarked(!!data?.bookmarked);
     } catch (error) {
       console.error('Error checking favorite:', error);
     }
@@ -67,13 +63,12 @@ export function BookmarkButton({ submissionId, size = 'md', showLabel = false, s
     if (!userId) return;
 
     try {
-      const { count, error } = await supabase
-        .from('favorites')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-
-      if (error) throw error;
-      setTotalBookmarks(count || 0);
+      const res = await fetch(
+        `/api/favorites?userId=${encodeURIComponent(userId)}&count=1`
+      );
+      const { data, error } = await res.json();
+      if (error) throw new Error(error);
+      setTotalBookmarks(data?.count || 0);
     } catch (error) {
       console.error('Error fetching favorite count:', error);
     }
@@ -94,26 +89,25 @@ export function BookmarkButton({ submissionId, size = 'md', showLabel = false, s
 
     try {
       if (isBookmarked) {
-        const { error } = await supabase
-          .from('favorites')
-          .delete()
-          .eq('user_id', userId)
-          .eq('submission_id', submissionId);
-
-        if (error) throw error;
+        const res = await fetch('/api/favorites', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, submissionId }),
+        });
+        const { error } = await res.json();
+        if (error) throw new Error(error);
         setIsBookmarked(false);
         trackEvent(analyticsEvents.FAVORITE_REMOVED, {
           submission_id: submissionId,
         });
       } else {
-        const { error } = await supabase
-          .from('favorites')
-          .insert({
-            user_id: userId,
-            submission_id: submissionId
-          });
-
-        if (error) throw error;
+        const res = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, submissionId }),
+        });
+        const { error } = await res.json();
+        if (error) throw new Error(error);
         setIsBookmarked(true);
         trackEvent(analyticsEvents.FAVORITE_ADDED, {
           submission_id: submissionId,

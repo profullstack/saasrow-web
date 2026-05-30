@@ -49,29 +49,11 @@ export function Favorites() {
     if (!userId) return;
 
     try {
-      const { data: favorites, error: favoritesError } = await supabase
-        .from('favorites')
-        .select('submission_id')
-        .eq('user_id', userId);
+      const res = await fetch(`/api/favorites?userId=${encodeURIComponent(userId)}`);
+      const { data, error } = await res.json();
+      if (error) throw new Error(error);
 
-      if (favoritesError) throw favoritesError;
-
-      if (!favorites || favorites.length === 0) {
-        setIsLoading(false);
-        return;
-      }
-
-      const submissionIds = favorites.map(f => f.submission_id);
-
-      const { data: submissions, error: subError } = await supabase
-        .from('software_submissions')
-        .select('*')
-        .in('id', submissionIds)
-        .eq('status', 'approved');
-
-      if (subError) throw subError;
-
-      setFavoriteSoftware(submissions || []);
+      setFavoriteSoftware(data?.submissions || []);
     } catch (error) {
       console.error('Error loading favorites:', error);
     } finally {

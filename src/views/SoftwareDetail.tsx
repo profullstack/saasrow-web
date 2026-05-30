@@ -72,15 +72,10 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
     const { data: { session } } = await supabase.auth.getSession()
 
     if (session) {
-      const { data: vote } = await supabase
-        .from('votes')
-        .select('vote_type')
-        .eq('submission_id', id)
-        .eq('user_id', session.user.id)
-        .maybeSingle()
-
-      if (vote) {
-        setUserVote(vote.vote_type as 'upvote' | 'downvote')
+      const res = await fetch('/api/votes/me?submissionId=' + id)
+      const { data } = await res.json()
+      if (data?.vote_type) {
+        setUserVote(data.vote_type as 'upvote' | 'downvote')
       }
     } else {
       const anonymousVoteKey = `vote_${id}`

@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
-import { supabase } from '../lib/supabase'
 
 interface NewsPost {
   id: string
@@ -44,14 +43,9 @@ export default function NewsPostPage({ initialPost }: NewsPostPageProps = {}) {
 
   const fetchPost = async (slug: string) => {
     try {
-      const { data, error } = await supabase
-        .from('news_posts')
-        .select('*')
-        .eq('slug', slug)
-        .eq('published', true)
-        .maybeSingle()
-
-      if (error) throw error
+      const res = await fetch(`/api/news?slug=${encodeURIComponent(slug)}`)
+      const json = await res.json()
+      const data = json.data as NewsPost | null
 
       if (!data) {
         setNotFound(true)

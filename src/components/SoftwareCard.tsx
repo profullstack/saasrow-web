@@ -58,15 +58,10 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     setIsAuthenticated(!!session)
 
     if (session) {
-      const { data: vote } = await supabase
-        .from('votes')
-        .select('vote_type')
-        .eq('submission_id', software.id)
-        .eq('user_id', session.user.id)
-        .maybeSingle()
-
-      if (vote) {
-        setUserVote(vote.vote_type as 'upvote' | 'downvote')
+      const res = await fetch('/api/votes/me?submissionId=' + software.id)
+      const { data } = await res.json()
+      if (data?.vote_type) {
+        setUserVote(data.vote_type as 'upvote' | 'downvote')
       }
     } else {
       const anonymousVoteKey = `vote_${software.id}`

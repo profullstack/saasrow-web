@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
-import { supabase } from '../lib/supabase'
 
 interface NewsItem {
   id: string
@@ -31,13 +30,9 @@ export default function NewsPage({ initialNewsItems }: NewsPageProps = {}) {
 
   const fetchNewsPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('news_posts')
-        .select('id, slug, title, excerpt, created_at, banner_image')
-        .eq('published', true)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
+      const res = await fetch('/api/news')
+      const json = await res.json()
+      const data = json.data as NewsItem[] | undefined
       setNewsItems(data || [])
     } catch (error) {
       console.error('Failed to fetch news posts:', error)

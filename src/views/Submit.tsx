@@ -48,13 +48,9 @@ export default function SubmitPage() {
 
   const checkUserTier = async (email: string) => {
     try {
-      const { data } = await supabase
-        .from('user_tokens')
-        .select('tier')
-        .eq('email', email)
-        .maybeSingle()
-
-      return data?.tier || 'free'
+      const response = await fetch('/api/user-tier?email=' + encodeURIComponent(email))
+      const json = await response.json()
+      return json.data?.tier || 'free'
     } catch {
       return 'free'
     }
@@ -198,12 +194,13 @@ export default function SubmitPage() {
       if (logoFile) {
         const fileExt = logoFile.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-        const { error: logoError } = await supabase.storage
-          .from('software-logos')
-          .upload(fileName, logoFile, {
-            cacheControl: '3600',
-            upsert: false,
-          })
+        const logoForm = new FormData()
+        logoForm.append('bucket', 'software-logos')
+        logoForm.append('path', fileName)
+        logoForm.append('file', logoFile)
+        const logoRes = await fetch('/api/upload', { method: 'POST', body: logoForm })
+        const logoJson = await logoRes.json()
+        const logoError = logoRes.ok ? null : (logoJson.error || 'upload failed')
 
         if (logoError) {
           setMessage({ type: 'error', text: 'Failed to upload logo' })
@@ -218,12 +215,13 @@ export default function SubmitPage() {
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-        const { error: imageError } = await supabase.storage
-          .from('software-images')
-          .upload(fileName, imageFile, {
-            cacheControl: '3600',
-            upsert: false,
-          })
+        const imageForm = new FormData()
+        imageForm.append('bucket', 'software-images')
+        imageForm.append('path', fileName)
+        imageForm.append('file', imageFile)
+        const imageRes = await fetch('/api/upload', { method: 'POST', body: imageForm })
+        const imageJson = await imageRes.json()
+        const imageError = imageRes.ok ? null : (imageJson.error || 'upload failed')
 
         if (imageError) {
           setMessage({ type: 'error', text: 'Failed to upload image' })

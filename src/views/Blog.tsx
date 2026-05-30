@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
-import { supabase } from '../lib/supabase'
 
 interface BlogPost {
   id: string
@@ -34,13 +33,9 @@ export default function BlogPage({ initialPosts }: BlogPageProps = {}) {
 
   const fetchPosts = async () => {
     try {
-      const { data, error } = await supabase
-        .from('blog_posts')
-        .select('id, slug, title, excerpt, author_name, featured_image_url, tags, published_at, created_at')
-        .eq('status', 'published')
-        .order('published_at', { ascending: false })
-
-      if (error) throw error
+      const res = await fetch('/api/blog')
+      const json = await res.json()
+      const data = json.data as BlogPost[] | undefined
       setPosts(data || [])
     } catch (err) {
       console.error('Failed to fetch blog posts:', err)

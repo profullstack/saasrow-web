@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 interface SearchSectionProps {
@@ -96,13 +95,9 @@ export function SearchSection({
 
   const fetchTags = async () => {
     try {
-      const { data, error } = await supabase
-        .from('software_submissions')
-        .select('tags')
-        .eq('status', 'approved')
-        .not('tags', 'is', null)
-
-      if (error) throw error
+      const res = await fetch('/api/search')
+      const json = await res.json()
+      const data = json.data as Array<{ tags?: string[] | null }> | undefined
 
       const allTags = new Set<string>()
       data?.forEach(submission => {

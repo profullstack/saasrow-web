@@ -30,42 +30,16 @@ export function RelatedSoftware({ currentId, category, tags = [] }: RelatedSoftw
 
   const fetchRelatedSoftware = async () => {
     try {
-      let query = supabase
-        .from('software_submissions')
-        .select('id, title, description, logo, category, tier, upvotes')
-        .eq('status', 'approved')
-        .neq('id', currentId)
-        .limit(6)
+      const params = new URLSearchParams()
+      params.set('id', currentId)
+      params.set('category', category)
+      tags.forEach((tag) => params.append('tags', tag))
 
-      if (tags.length > 0) {
-        query = query.overlaps('tags', tags)
-      } else {
-        query = query.eq('category', category)
-      }
+      const res = await fetch(`/api/related?${params.toString()}`)
+      const json = await res.json()
+      const data = json.data as RelatedSubmission[] | undefined
 
-      const { data, error } = await query.order('upvotes', { ascending: false })
-
-      if (error) throw error
-
-      if (data && data.length < 3 && tags.length > 0) {
-        const { data: categoryData } = await supabase
-          .from('software_submissions')
-          .select('id, title, description, logo, category, tier, upvotes')
-          .eq('status', 'approved')
-          .eq('category', category)
-          .neq('id', currentId)
-          .not('id', 'in', `(${data.map(d => d.id).join(',')})`)
-          .order('upvotes', { ascending: false })
-          .limit(6 - data.length)
-
-        if (categoryData) {
-          setRelated([...data, ...categoryData])
-        } else {
-          setRelated(data || [])
-        }
-      } else {
-        setRelated(data || [])
-      }
+      setRelated(data || [])
     } catch (error) {
       console.error('Error fetching related software:', error)
     } finally {
