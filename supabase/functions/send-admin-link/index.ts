@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const token = crypto.randomUUID()
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 
     const { error: insertError } = await supabase
       .from('admin_tokens')
@@ -208,7 +208,7 @@ Deno.serve(async (req: Request) => {
             <div class="content">
               <p>👋 <strong>Hi Admin!</strong></p>
               <p>Click the button below to securely log in to your <span class="highlight">SaaSRow</span> admin dashboard.</p>
-              <p>This link is valid for <strong>1 hour</strong> and can only be used once.</p>
+              <p>This link is valid for <strong>24 hours</strong> and can only be used once.</p>
             </div>
             <div class="button-container">
               <a href="${adminUrl}" class="button">Access Admin Dashboard</a>
@@ -223,7 +223,7 @@ Deno.serve(async (req: Request) => {
             </div>
             <div class="footer">
               <p><strong>SaaSRow</strong> - Admin Access</p>
-              <p style="margin-top: 8px;">This link expires in 1 hour for your security.</p>
+              <p style="margin-top: 8px;">This link expires in 24 hours for your security.</p>
             </div>
           </div>
         </body>
@@ -237,14 +237,14 @@ Click the link below to securely log in to your SaaSRow admin dashboard.
 
 ${adminUrl}
 
-This link is valid for 1 hour and can only be used once.
+This link is valid for 24 hours and can only be used once.
 
 🔒 Security Notice
 This is a secure admin login link. Never share it with anyone. If you didn't request this, please ignore this email.
 
 ---
 SaaSRow - Admin Access
-This link expires in 1 hour for your security.
+This link expires in 24 hours for your security.
     `
 
     try {
