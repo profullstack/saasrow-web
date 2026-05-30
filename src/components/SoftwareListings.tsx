@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SoftwareCard } from './SoftwareCard'
+import { callFn } from '@/lib/clientApi'
 
 interface Software {
   id: string
@@ -51,16 +52,7 @@ export function SoftwareListings({
 
   const fetchListings = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions?t=${Date.now()}`
-      console.log('Fetching from:', apiUrl)
-
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      })
+      const response = await callFn('submissions', { query: { t: Date.now() } })
 
       console.log('Response status:', response.status)
 

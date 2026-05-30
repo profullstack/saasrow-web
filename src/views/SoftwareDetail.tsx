@@ -12,6 +12,7 @@ import { Comments } from '../components/Comments'
 import { RelatedSoftware } from '../components/RelatedSoftware'
 import { BookmarkButton } from '../components/BookmarkButton'
 import { supabase } from '../lib/supabase'
+import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 interface Submission {
@@ -98,23 +99,12 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/vote`
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      }
-
-      if (session) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-
-      const response = await fetch(apiUrl, {
+      const response = await callFn('vote', {
         method: 'POST',
-        headers,
-        body: JSON.stringify({
+        body: {
           submissionId: submission.id,
           voteType,
-        }),
+        },
       })
 
       const result = await response.json()
@@ -162,14 +152,9 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
       const hasViewed = sessionStorage.getItem(viewKey)
 
       if (!hasViewed) {
-        const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/increment-view`
-        await fetch(apiUrl, {
+        await callFn('increment-view', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ submissionId }),
+          body: { submissionId },
         })
 
         trackEvent(analyticsEvents.SOFTWARE_VIEW, {
@@ -190,23 +175,17 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
     e.preventDefault()
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-click`
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 500)
 
-      await fetch(apiUrl, {
+      await callFn('track-click', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           submissionId,
           referrer: document.referrer || null,
           userAgent: navigator.userAgent,
-        }),
+        },
         signal: controller.signal,
-        keepalive: true
       })
 
       clearTimeout(timeoutId)
@@ -243,14 +222,9 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
       setShowCopied(true)
       setTimeout(() => setShowCopied(false), 2000)
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-share`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('track-share', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ submissionId: submission.id }),
+        body: { submissionId: submission.id },
       })
 
       if (response.ok) {
@@ -267,13 +241,7 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
   const fetchSubmission = async () => {
     setLoading(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('submissions')
 
       if (response.ok) {
         const result = await response.json()

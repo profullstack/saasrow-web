@@ -5,6 +5,7 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import type { CommunityPost } from '../lib/supabase'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
+import { callFn } from '@/lib/clientApi'
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([])
@@ -17,12 +18,7 @@ export default function CommunityPage() {
 
   const fetchPosts = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/community`
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('community')
       const result = await response.json()
 
       if (response.ok) {
@@ -39,17 +35,12 @@ export default function CommunityPage() {
 
   const handleLike = async (postId: string, currentLikes: number) => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/community`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('community', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           id: postId,
           likes: currentLikes + 1,
-        }),
+        },
       })
 
       if (response.ok) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Alert } from './Alert'
 import { supabase } from '../lib/supabase'
+import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 interface Comment {
@@ -48,12 +49,9 @@ export function Comments({ submissionId }: CommentsProps) {
   const fetchComments = async () => {
     setLoading(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/comments?submissionId=${submissionId}`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('comments', {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
+        query: { submissionId },
       })
 
       if (response.ok) {
@@ -99,24 +97,15 @@ export function Comments({ submissionId }: CommentsProps) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/comments`
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': session
-          ? `Bearer ${session.access_token}`
-          : `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      }
-
-      const response = await fetch(apiUrl, {
+      const response = await callFn('comments', {
         method: 'POST',
-        headers,
-        body: JSON.stringify({
+        body: {
           submissionId,
           authorName: formData.authorName,
           authorEmail: formData.authorEmail,
           content: formData.content,
           rating: formData.rating > 0 ? formData.rating : null,
-        }),
+        },
       })
 
       const result = await response.json()

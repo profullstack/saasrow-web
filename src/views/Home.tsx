@@ -7,6 +7,7 @@ import { SearchSection } from '../components/SearchSection'
 import { SoftwareListings } from '../components/SoftwareListings'
 import { Footer } from '../components/Footer'
 import { FloatingCTA } from '../components/FloatingCTA'
+import { callFn } from '@/lib/clientApi'
 
 interface HomePageProps {
   initialListings?: Parameters<typeof SoftwareListings>[0]['initialListings']
@@ -23,13 +24,7 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
   useEffect(() => {
     const triggerCleanup = async () => {
       try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/cleanup-expired-listings`
-        await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          },
-        })
+        await callFn('cleanup-expired-listings', { method: 'POST' })
       } catch (error) {
         // Silent fail - cleanup will run next time
         console.debug('Cleanup check skipped')

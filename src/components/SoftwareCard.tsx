@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { callFn } from '@/lib/clientApi'
 import { BookmarkButton } from './BookmarkButton'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
@@ -87,23 +88,12 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/vote`
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-      }
-
-      if (session) {
-        headers['Authorization'] = `Bearer ${session.access_token}`
-      }
-
-      const response = await fetch(apiUrl, {
+      const response = await callFn('vote', {
         method: 'POST',
-        headers,
-        body: JSON.stringify({
+        body: {
           submissionId: software.id,
           voteType,
-        }),
+        },
       })
 
       const result = await response.json()
@@ -160,23 +150,17 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     }
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-click`
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 300)
 
-      await fetch(apiUrl, {
+      await callFn('track-click', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           submissionId,
           referrer: document.referrer || null,
           userAgent: navigator.userAgent,
-        }),
+        },
         signal: controller.signal,
-        keepalive: true
       })
 
       clearTimeout(timeoutId)
@@ -209,14 +193,9 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
       setShowCopied(true)
       setTimeout(() => setShowCopied(false), 2000)
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/track-share`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('track-share', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ submissionId: software.id }),
+        body: { submissionId: software.id },
       })
 
       if (response.ok) {

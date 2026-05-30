@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent, ChangeEvent } from 'react'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { supabase } from '../lib/supabase'
+import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 interface FetchedData {
@@ -108,18 +109,13 @@ export default function SubmitPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/fetch-metadata`
       const fetchedData: FetchedData[] = []
 
       for (const url of urlList) {
         try {
-          const response = await fetch(apiUrl, {
+          const response = await callFn('fetch-metadata', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            },
-            body: JSON.stringify({ url }),
+            body: { url },
           })
 
           const data = await response.json()
@@ -239,18 +235,13 @@ export default function SubmitPage() {
         uploadedImagePath = fetchedImagePath
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('submissions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           ...formData,
           logo: uploadedLogoPath,
           image: uploadedImagePath,
-        }),
+        },
       })
 
       const data = await response.json()
@@ -345,14 +336,9 @@ export default function SubmitPage() {
     try {
       if (subscribeToNewsletter) {
         try {
-          const newsletterUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
-          const response = await fetch(newsletterUrl, {
+          const response = await callFn('newsletter', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email: emailInput }),
+            body: { email: emailInput },
           })
 
           if (response.ok) {
@@ -366,18 +352,13 @@ export default function SubmitPage() {
         }
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
       let successCount = 0
 
       for (const submission of submissions) {
         try {
-          const response = await fetch(apiUrl, {
+          const response = await callFn('submissions', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
+            body: {
               title: submission.title,
               url: submission.url,
               description: submission.description,
@@ -386,7 +367,7 @@ export default function SubmitPage() {
               tags: submission.tags,
               logo: submission.logo,
               image: submission.image,
-            }),
+            },
           })
 
           if (response.ok) {
@@ -406,13 +387,9 @@ export default function SubmitPage() {
         });
 
         try {
-          const sendLinkResponse = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-management-link`, {
+          const sendLinkResponse = await callFn('send-management-link', {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email: emailInput }),
+            body: { email: emailInput },
           })
 
           if (sendLinkResponse.ok) {

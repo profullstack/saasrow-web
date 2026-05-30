@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { Menu, X, Heart } from 'lucide-react'
+import { callFn } from '@/lib/clientApi'
 
 interface HeaderProps {
   isManagementPage?: boolean
@@ -44,14 +45,9 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     setMessage(null)
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-management-link`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('send-management-link', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ email }),
+        body: { email },
       })
 
       const data = await response.json()

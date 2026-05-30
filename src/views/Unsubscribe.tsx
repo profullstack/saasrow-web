@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { callFn } from '@/lib/clientApi'
 
 export default function UnsubscribePage() {
   const searchParams = useSearchParams()
@@ -26,15 +27,7 @@ export default function UnsubscribePage() {
     setMessage('')
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
-      const response = await fetch(apiUrl, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      })
+      const response = await callFn('newsletter', { method: 'DELETE', body: { email } })
 
       const data = await response.json()
 

@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import { DiscountPopup } from '../components/DiscountPopup'
 import { Alert } from '../components/Alert'
 import { supabase } from '../lib/supabase'
+import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 export default function FeaturedPage() {
@@ -162,14 +163,9 @@ export default function FeaturedPage() {
     setIsSubmittingNewsletter(true)
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('newsletter', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ email: newsletterEmail }),
+        body: { email: newsletterEmail },
       })
 
       const data = await response.json()
@@ -218,14 +214,9 @@ export default function FeaturedPage() {
         return undefined
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/stripe-checkout`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('stripe-checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
+        body: {
           price_id: priceId,
           success_url: successUrl,
           cancel_url: cancelUrl,
@@ -234,7 +225,7 @@ export default function FeaturedPage() {
           customer_email: email,
           datafast_visitor_id: getCookie('datafast_visitor_id'),
           datafast_session_id: getCookie('datafast_session_id'),
-        }),
+        },
       })
 
       const data = await response.json()

@@ -6,6 +6,7 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { callFn } from '@/lib/clientApi'
 
 interface Submission {
   id: string
@@ -175,17 +176,10 @@ export default function AdminPage() {
 
   const verifyAdminToken = async (token: string) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/verify-admin-token`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ token }),
-        }
-      )
+      const response = await callFn('verify-admin-token', {
+        method: 'POST',
+        body: { token },
+      })
 
       const result = await response.json()
 
@@ -213,17 +207,10 @@ export default function AdminPage() {
     setAuthMessage('')
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-admin-link`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email: email.trim() }),
-        }
-      )
+      const response = await callFn('send-admin-link', {
+        method: 'POST',
+        body: { email: email.trim() },
+      })
 
       const result = await response.json()
 
@@ -252,13 +239,7 @@ export default function AdminPage() {
 
   const fetchSubmissions = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions?all=true`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('submissions', { query: { all: true } })
 
       if (response.ok) {
         const result = await response.json()
@@ -285,15 +266,10 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-submissions`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('admin-submissions', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, status }),
+        body: { id, status },
+        adminToken: token,
       })
 
       if (response.ok) {
@@ -333,15 +309,10 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/admin-submissions`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('admin-submissions', {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id }),
+        body: { id },
+        adminToken: token,
       })
 
       if (response.ok) {
@@ -382,13 +353,7 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-news-posts?email=${encodeURIComponent(adminEmail)}`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('manage-news-posts', { query: { email: adminEmail } })
 
       if (response.ok) {
         const data = await response.json()
@@ -436,14 +401,7 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-autoblog-config`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token,
-        },
-      })
+      const response = await callFn('manage-autoblog-config', { adminToken: token })
 
       if (!response.ok) {
         const error = await response.json()
@@ -470,15 +428,10 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-autoblog-config`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('manage-autoblog-config', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled }),
+        body: { webhook_secret: autoblogWebhookSecret, enabled: autoblogEnabled },
+        adminToken: token,
       })
 
       if (!response.ok) {
@@ -498,13 +451,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     setLoadingUsers(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-admin-users`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('get-admin-users')
 
       if (!response.ok) {
         const error = await response.json()
@@ -756,12 +703,7 @@ export default function AdminPage() {
 
       console.log('Fetching analytics with token:', token.substring(0, 10) + '...')
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-admin-analytics`
-      const response = await fetch(`${apiUrl}?token=${encodeURIComponent(token)}`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('get-admin-analytics', { query: { token } })
 
       const data = await response.json()
       console.log('Analytics response:', response.status, data)
@@ -826,13 +768,7 @@ export default function AdminPage() {
   const fetchSubscribers = async () => {
     setLoadingSubscribers(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter?all=true`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('newsletter', { query: { all: true } })
 
       if (response.ok) {
         const result = await response.json()
@@ -888,14 +824,9 @@ export default function AdminPage() {
 
     for (const email of emails) {
       try {
-        const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
-        const response = await fetch(apiUrl, {
+        const response = await callFn('newsletter', {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
+          body: { email },
         })
 
         if (response.ok) {
@@ -916,13 +847,7 @@ export default function AdminPage() {
   const fetchNewsletterHistory = async () => {
     setLoadingHistory(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter-history`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('newsletter-history')
 
       if (response.ok) {
         const result = await response.json()
@@ -966,14 +891,7 @@ export default function AdminPage() {
     setLoadingComments(true)
     try {
       const token = sessionStorage.getItem('adminToken')
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/moderate-comments`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token || '',
-        },
-      })
+      const response = await callFn('moderate-comments', { adminToken: token || '' })
 
       if (response.ok) {
         const result = await response.json()
@@ -993,15 +911,10 @@ export default function AdminPage() {
   const moderateComment = async (commentId: string, action: 'approve' | 'reject') => {
     try {
       const token = sessionStorage.getItem('adminToken')
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/moderate-comments`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('moderate-comments', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'X-Admin-Token': token || '',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ commentId, action }),
+        body: { commentId, action },
+        adminToken: token || '',
       })
 
       if (response.ok) {
@@ -1020,18 +933,13 @@ export default function AdminPage() {
   const performSendNewsletter = async (subject: string, content: string, subscriberCount: number) => {
     setSendingNewsletter(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-newsletter`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('send-newsletter', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           subject: subject,
           content: content,
           adminEmail: adminEmail
-        }),
+        },
       })
 
       const result = await response.json()
@@ -1064,14 +972,9 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-news-post`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('generate-news-post', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ topic: newsTopic, tone: newsTone, email: adminEmail }),
+        body: { topic: newsTopic, tone: newsTone, email: adminEmail },
       })
 
       if (response.ok) {
@@ -1099,14 +1002,9 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-news-posts`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('manage-news-posts', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, published: !currentStatus, email: adminEmail }),
+        body: { id, published: !currentStatus, email: adminEmail },
       })
 
       if (!response.ok) {
@@ -1143,14 +1041,9 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-news-posts`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('manage-news-posts', {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id, email: adminEmail }),
+        body: { id, email: adminEmail },
       })
 
       if (!response.ok) {
@@ -1181,14 +1074,9 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/generate-banner-images`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('generate-banner-images', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ title: postTitle, email: adminEmail }),
+        body: { title: postTitle, email: adminEmail },
       })
 
       if (response.ok) {
@@ -1214,14 +1102,9 @@ export default function AdminPage() {
         return
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/manage-news-posts`
-      const response = await fetch(apiUrl, {
+      const response = await callFn('manage-news-posts', {
         method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ id: postId, banner_image: bannerUrl, email: adminEmail }),
+        body: { id: postId, banner_image: bannerUrl, email: adminEmail },
       })
 
       if (!response.ok) {

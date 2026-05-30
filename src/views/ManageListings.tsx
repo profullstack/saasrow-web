@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { BasicAnalytics } from '../components/BasicAnalytics'
 import { PremiumAnalytics } from '../components/PremiumAnalytics'
 import { ScreenshotGallery } from '../components/ScreenshotGallery'
+import { callFn } from '@/lib/clientApi'
 
 interface SocialLink {
   id?: string
@@ -90,8 +91,6 @@ export default function ManageListings() {
   const [generatingScreenshots, setGeneratingScreenshots] = useState<string | null>(null)
   const [renewingListing, setRenewingListing] = useState<string | null>(null)
 
-  const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-
   useEffect(() => {
     if (!token) {
       setError('Invalid management link')
@@ -106,7 +105,7 @@ export default function ManageListings() {
   const fetchSubmissions = async () => {
     try {
       const decodedToken = token ? decodeURIComponent(token) : ''
-      const response = await fetch(`${apiUrl}/functions/v1/submissions?token=${encodeURIComponent(decodedToken)}`)
+      const response = await callFn('submissions', { query: { token: decodedToken } })
       const result = await response.json()
 
       if (!response.ok) {
@@ -141,13 +140,9 @@ export default function ManageListings() {
   const fetchSubscriptionInfo = async () => {
     try {
       const decodedToken = token ? decodeURIComponent(token) : ''
-      const response = await fetch(`${apiUrl}/functions/v1/get-subscription`, {
+      const response = await callFn('get-subscription', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: decodedToken }),
+        body: { token: decodedToken },
       })
 
       if (!response.ok) return
@@ -207,13 +202,9 @@ export default function ManageListings() {
     try {
       console.log('[ADD LISTING] Fetching metadata for:', addUrl)
 
-      const response = await fetch(`${apiUrl}/functions/v1/fetch-metadata`, {
+      const response = await callFn('fetch-metadata', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: addUrl }),
+        body: { url: addUrl },
       })
 
       const result = await response.json()
@@ -242,13 +233,9 @@ export default function ManageListings() {
         image: result.image,
       })
 
-      const createResponse = await fetch(`${apiUrl}/functions/v1/submissions`, {
+      const createResponse = await callFn('submissions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           url: addUrl,
           email: email,
           title: result.title,
@@ -258,7 +245,7 @@ export default function ManageListings() {
           logo: result.logo || null,
           image: result.image || null,
           socialLinks: result.socialLinks || [],
-        }),
+        },
       })
 
       const createResult = await createResponse.json()
@@ -287,13 +274,9 @@ export default function ManageListings() {
 
     setSaving(true)
     try {
-      const response = await fetch(`${apiUrl}/functions/v1/submissions`, {
+      const response = await callFn('submissions', {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ token, submission: formData })
+        body: { token, submission: formData },
       })
 
       const result = await response.json()
@@ -351,13 +334,9 @@ export default function ManageListings() {
     setCancelling(true)
     try {
       const decodedToken = decodeURIComponent(token)
-      const response = await fetch(`${apiUrl}/functions/v1/cancel-subscription`, {
+      const response = await callFn('cancel-subscription', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ token: decodedToken })
+        body: { token: decodedToken },
       })
 
       const result = await response.json()
@@ -379,17 +358,13 @@ export default function ManageListings() {
     setGeneratingScreenshots(submissionId)
     try {
       console.log('Generating screenshots for:', { submissionId, url, tier })
-      const response = await fetch(`${apiUrl}/functions/v1/capture-screenshots`, {
+      const response = await callFn('capture-screenshots', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+        body: {
           submissionId,
           url,
           tier
-        })
+        },
       })
 
       console.log('Response status:', response.status)
@@ -425,16 +400,12 @@ export default function ManageListings() {
     setRenewingListing(submissionId)
     try {
       const decodedToken = decodeURIComponent(token)
-      const response = await fetch(`${apiUrl}/functions/v1/renew-listing`, {
+      const response = await callFn('renew-listing', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+        body: {
           submissionId,
           token: decodedToken
-        })
+        },
       })
 
       const result = await response.json()

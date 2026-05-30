@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { callFn } from '@/lib/clientApi'
 
 interface AnalyticsData {
   tier: string
@@ -40,15 +41,7 @@ export function PremiumAnalytics({ submissionId, token }: PremiumAnalyticsProps)
     setLoading(true)
     setError(null)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/get-analytics`
-      const response = await fetch(
-        `${apiUrl}?token=${encodeURIComponent(token)}&submissionId=${submissionId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          },
-        }
-      )
+      const response = await callFn('get-analytics', { query: { token, submissionId } })
 
       if (response.ok) {
         const data = await response.json()

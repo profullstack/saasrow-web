@@ -7,6 +7,7 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { FloatingCTA } from '../components/FloatingCTA'
 import { SoftwareCard } from '../components/SoftwareCard'
+import { callFn } from '@/lib/clientApi'
 
 interface Submission {
   id: string
@@ -82,13 +83,7 @@ export default function CategoryPage({ initialSubmissions }: CategoryPageProps =
   const fetchSubmissions = async () => {
     setLoading(true)
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('submissions')
 
       if (response.ok) {
         const result = await response.json()

@@ -2,6 +2,7 @@
 
 import { useState, FormEvent, ChangeEvent } from 'react'
 import Link from 'next/link'
+import { callFn } from '@/lib/clientApi'
 
 export function Footer() {
   const [email, setEmail] = useState('')
@@ -26,15 +27,7 @@ export function Footer() {
     setMessage(null)
 
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/newsletter`
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      })
+      const response = await callFn('newsletter', { method: 'POST', body: { email } })
 
       const data = await response.json()
 

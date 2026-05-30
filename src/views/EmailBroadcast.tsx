@@ -6,6 +6,7 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { callFn } from '@/lib/clientApi'
 
 type Audience = 'newsletter' | 'users' | 'all'
 
@@ -74,17 +75,12 @@ export default function EmailBroadcast() {
   const fetchRecipientCount = async (aud: Audience) => {
     setPreview({ count: 0, loading: true, error: null })
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
       const adminToken = sessionStorage.getItem('adminToken') ?? ''
 
       const emailSet = new Set<string>()
 
       if (aud === 'newsletter' || aud === 'all') {
-        const res = await fetch(
-          `${supabaseUrl}/functions/v1/newsletter?all=true`,
-          { headers: { Authorization: `Bearer ${anonKey}`, 'X-Admin-Token': adminToken } }
-        )
+        const res = await callFn('newsletter', { query: { all: true }, adminToken })
         if (res.ok) {
           const json = await res.json()
           // newsletter returns { data: [...] }
@@ -94,10 +90,7 @@ export default function EmailBroadcast() {
       }
 
       if (aud === 'users' || aud === 'all') {
-        const res = await fetch(
-          `${supabaseUrl}/functions/v1/get-admin-users`,
-          { headers: { Authorization: `Bearer ${anonKey}`, 'X-Admin-Token': adminToken } }
-        )
+        const res = await callFn('get-admin-users', { adminToken })
         if (res.ok) {
           const json = await res.json()
           for (const t of json.tokens ?? []) if (t.email) emailSet.add(t.email.toLowerCase())
@@ -140,17 +133,10 @@ export default function EmailBroadcast() {
   const performSend = async () => {
     setSending(true)
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/send-email-broadcast`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ subject, content, adminEmail, audience }),
-        }
-      )
+      const res = await callFn('send-email-broadcast', {
+        method: 'POST',
+        body: { subject, content, adminEmail, audience },
+      })
       const result = await res.json()
       if (res.ok) {
         setAlertMessage({ type: 'success', message: `Email sent to ${result.recipientCount} recipient${result.recipientCount !== 1 ? 's' : ''}!` })

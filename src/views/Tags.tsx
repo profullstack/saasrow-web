@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { SoftwareCard } from '../components/SoftwareCard'
+import { callFn } from '@/lib/clientApi'
 
 interface TagCount {
   name: string
@@ -55,13 +56,7 @@ export default function TagsPage({ initialTags, initialSoftware }: TagsPageProps
 
   const fetchTags = async () => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('submissions')
 
       if (response.ok) {
         const result = await response.json()
@@ -130,13 +125,7 @@ export default function TagsPage({ initialTags, initialSoftware }: TagsPageProps
 
   const fetchSoftwareByTag = async (tagName: string) => {
     try {
-      const apiUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/submissions`
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        },
-      })
+      const response = await callFn('submissions')
 
       if (response.ok) {
         const result = await response.json()
