@@ -81,6 +81,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     { id: 'apps', label: 'Apps', href: '/' },
     { id: 'categories', label: 'Categories', href: '/categories' },
     { id: 'tags', label: 'Tags', href: '/tags' },
+    { id: 'blog', label: 'Blog', href: '/blog' },
   ]
 
   return (
