@@ -2434,10 +2434,10 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => setAutoblogEnabled(!autoblogEnabled)}
-                        className={`relative w-12 h-6 rounded-full transition-colors ${autoblogEnabled ? 'bg-[#4FFFE3]' : 'bg-white/20'}`}
+                        className={`relative w-12 h-6 p-0 shrink-0 rounded-full transition-colors ${autoblogEnabled ? 'bg-[#4FFFE3]' : 'bg-white/20'}`}
                       >
                         <span
-                          className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoblogEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                          className={`absolute left-1 top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${autoblogEnabled ? 'translate-x-6' : 'translate-x-0'}`}
                         />
                       </button>
                       <span className="text-white/80 font-ubuntu text-sm">
