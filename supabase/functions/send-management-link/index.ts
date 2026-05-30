@@ -271,35 +271,31 @@ This is an automated email. You're receiving this because you submitted software
     `
 
     try {
-      const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')
-      const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN')
-      
-      if (mailgunApiKey && mailgunDomain) {
-        const formData = new FormData()
-        formData.append('from', 'SaaSRow <noreply@saasrow.com>')
-        formData.append('to', email)
-        formData.append('subject', 'Manage Your SaaSRow Listings')
-        formData.append('html', emailHtml)
-        formData.append('text', emailText)
+      const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
-        const mailgunResponse = await fetch(
-          `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-            },
-            body: formData,
-          }
-        )
+      if (resendApiKey) {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'SaaSRow <noreply@saasrow.com>',
+            to: email,
+            subject: 'Manage Your SaaSRow Listings',
+            html: emailHtml,
+            text: emailText,
+          }),
+        })
 
-        if (!mailgunResponse.ok) {
-          console.error('Mailgun API error:', await mailgunResponse.text())
+        if (!resendResponse.ok) {
+          console.error('Resend API error:', await resendResponse.text())
         } else {
-          console.log('Email sent successfully via Mailgun to:', email)
+          console.log('Email sent successfully via Resend to:', email)
         }
       } else {
-        console.log('MAILGUN_API_KEY or MAILGUN_DOMAIN not configured')
+        console.log('RESEND_API_KEY not configured')
         console.log('Would send email to:', email)
         console.log('Management URL:', managementUrl)
       }

@@ -17,36 +17,32 @@ interface NotificationRequest {
   };
 }
 
-async function sendEmailViaMailgun(subject: string, htmlContent: string, textContent: string) {
-  const mailgunApiKey = Deno.env.get("MAILGUN_API_KEY");
-  const mailgunDomain = Deno.env.get("MAILGUN_DOMAIN");
+async function sendEmailViaResend(subject: string, htmlContent: string, textContent: string) {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const adminEmail = Deno.env.get("ADMIN_EMAIL");
 
-  if (!mailgunApiKey || !mailgunDomain || !adminEmail) {
+  if (!resendApiKey || !adminEmail) {
     console.log("Email configuration missing. Would send:", subject);
     return false;
   }
 
-  const formData = new FormData();
-  formData.append("from", "SaaSRow Notifications <noreply@saasrow.com>");
-  formData.append("to", adminEmail);
-  formData.append("subject", subject);
-  formData.append("html", htmlContent);
-  formData.append("text", textContent);
-
-  const response = await fetch(
-    `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-      },
-      body: formData,
-    }
-  );
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: "SaaSRow Notifications <noreply@saasrow.com>",
+      to: adminEmail,
+      subject,
+      html: htmlContent,
+      text: textContent,
+    }),
+  });
 
   if (!response.ok) {
-    console.error("Mailgun error:", await response.text());
+    console.error("Resend error:", await response.text());
     return false;
   }
 
@@ -178,7 +174,7 @@ A new user has subscribed to the ${data.tier} tier. 🎉
       );
     }
 
-    const sent = await sendEmailViaMailgun(subject, htmlContent, textContent);
+    const sent = await sendEmailViaResend(subject, htmlContent, textContent);
 
     return new Response(
       JSON.stringify({

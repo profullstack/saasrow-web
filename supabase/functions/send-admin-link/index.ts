@@ -248,35 +248,31 @@ This link expires in 1 hour for your security.
     `
 
     try {
-      const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')
-      const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN')
+      const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
-      if (mailgunApiKey && mailgunDomain) {
-        const formData = new FormData()
-        formData.append('from', 'SaaSRow <noreply@saasrow.com>')
-        formData.append('to', email)
-        formData.append('subject', 'Admin Login - SaaSRow')
-        formData.append('html', emailHtml)
-        formData.append('text', emailText)
+      if (resendApiKey) {
+        const resendResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${resendApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: 'SaaSRow <noreply@saasrow.com>',
+            to: email,
+            subject: 'Admin Login - SaaSRow',
+            html: emailHtml,
+            text: emailText,
+          }),
+        })
 
-        const mailgunResponse = await fetch(
-          `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}`,
-            },
-            body: formData,
-          }
-        )
-
-        if (!mailgunResponse.ok) {
-          console.error('Mailgun API error:', await mailgunResponse.text())
+        if (!resendResponse.ok) {
+          console.error('Resend API error:', await resendResponse.text())
         } else {
-          console.log('Admin email sent successfully via Mailgun to:', email)
+          console.log('Admin email sent successfully via Resend to:', email)
         }
       } else {
-        console.log('MAILGUN_API_KEY or MAILGUN_DOMAIN not configured')
+        console.log('RESEND_API_KEY not configured')
         console.log('Would send admin email to:', email)
         console.log('Admin URL:', adminUrl)
       }

@@ -17,8 +17,8 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')
-    const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN')
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    const fromDomain = Deno.env.get('RESEND_DOMAIN') || 'saasrow.com'
     const siteUrl = Deno.env.get('SITE_URL') || 'https://saasrow.com'
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
@@ -57,7 +57,7 @@ Deno.serve(async (req: Request) => {
     let expiringCount = 0
 
     // Send notification emails asynchronously
-    if (notificationListings && notificationListings.length > 0 && mailgunApiKey && mailgunDomain) {
+    if (notificationListings && notificationListings.length > 0 && resendApiKey) {
       for (const listing of notificationListings) {
         try {
           if (listing.notification_type === 'expired') {
@@ -142,16 +142,18 @@ Deno.serve(async (req: Request) => {
               </html>
             `
 
-            const formData = new FormData()
-            formData.append('from', `SaaSRow <noreply@${mailgunDomain}>`)
-            formData.append('to', listing.email)
-            formData.append('subject', `⏰ Your SaaSRow Listing Has Expired - Renew or Upgrade`)
-            formData.append('html', emailHtml)
-
-            await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
+            await fetch('https://api.resend.com/emails', {
               method: 'POST',
-              headers: { 'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}` },
-              body: formData,
+              headers: {
+                'Authorization': `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: `SaaSRow <noreply@${fromDomain}>`,
+                to: listing.email,
+                subject: `⏰ Your SaaSRow Listing Has Expired - Renew or Upgrade`,
+                html: emailHtml,
+              }),
             })
 
             console.log(`Sent expiration email to ${listing.email}`)
@@ -225,16 +227,18 @@ Deno.serve(async (req: Request) => {
               </html>
             `
 
-            const formData = new FormData()
-            formData.append('from', `SaaSRow <noreply@${mailgunDomain}>`)
-            formData.append('to', listing.email)
-            formData.append('subject', `⚠️ Your SaaSRow Listing Expires in ${daysUntilExpiry} Day${daysUntilExpiry > 1 ? 's' : ''}`)
-            formData.append('html', emailHtml)
-
-            await fetch(`https://api.mailgun.net/v3/${mailgunDomain}/messages`, {
+            await fetch('https://api.resend.com/emails', {
               method: 'POST',
-              headers: { 'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}` },
-              body: formData,
+              headers: {
+                'Authorization': `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                from: `SaaSRow <noreply@${fromDomain}>`,
+                to: listing.email,
+                subject: `⚠️ Your SaaSRow Listing Expires in ${daysUntilExpiry} Day${daysUntilExpiry > 1 ? 's' : ''}`,
+                html: emailHtml,
+              }),
             })
 
             console.log(`Sent expiration warning to ${listing.email}`)

@@ -49,7 +49,7 @@ interface NewsletterHistoryItem {
   content: string
   recipient_count: number
   sent_by: string
-  mailgun_id: string
+  resend_id: string
   sent_at: string
 }
 

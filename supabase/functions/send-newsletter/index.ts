@@ -43,14 +43,14 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const mailgunApiKey = Deno.env.get('MAILGUN_API_KEY')
-    const mailgunDomain = Deno.env.get('MAILGUN_DOMAIN')
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')
+    const fromDomain = Deno.env.get('RESEND_DOMAIN') || 'saasrow.com'
     const siteUrl = Deno.env.get('SITE_URL') || 'https://saasrow.com'
 
-    if (!mailgunApiKey || !mailgunDomain) {
+    if (!resendApiKey) {
       return new Response(
         JSON.stringify({
-          error: 'Mailgun is not configured. Please set MAILGUN_API_KEY and MAILGUN_DOMAIN environment variables.'
+          error: 'Resend is not configured. Please set RESEND_API_KEY environment variable.'
         }),
         {
           status: 500,
@@ -163,41 +163,49 @@ Deno.serve(async (req: Request) => {
 </html>
     `.trim()
 
-    const formData = new FormData()
-    formData.append('from', `SaaSRow <newsletter@${mailgunDomain}>`)
-    formData.append('to', emailList.join(','))
-    formData.append('subject', subject)
-    formData.append('html', htmlContent)
-    formData.append('text', content)
-    formData.append('recipient-variables', JSON.stringify(
-      Object.fromEntries(subscribers.map(s => [s.email, { email: s.email }]))
-    ))
+    // Resend's batch endpoint sends individual emails (one per recipient, max 100 per call)
+    const BATCH_SIZE = 100
+    let lastResendId = ''
 
-    const mailgunResponse = await fetch(
-      `https://api.mailgun.net/v3/${mailgunDomain}/messages`,
-      {
+    for (let i = 0; i < emailList.length; i += BATCH_SIZE) {
+      const batch = emailList.slice(i, i + BATCH_SIZE)
+
+      const resendResponse = await fetch('https://api.resend.com/emails/batch', {
         method: 'POST',
         headers: {
-          'Authorization': `Basic ${btoa(`api:${mailgunApiKey}`)}`,
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify(
+          batch.map(email => ({
+            from: `SaaSRow <newsletter@${fromDomain}>`,
+            to: email,
+            subject,
+            // Per-recipient unsubscribe link (replaces Mailgun's %recipient.email% template var)
+            html: htmlContent.replace('%recipient.email%', encodeURIComponent(email)),
+            text: content,
+          }))
+        ),
+      })
+
+      const resendResult = await resendResponse.json()
+
+      if (!resendResponse.ok) {
+        console.error('Resend error:', resendResult)
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to send newsletter via Resend',
+            details: resendResult
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
       }
-    )
 
-    const mailgunResult = await mailgunResponse.json()
-
-    if (!mailgunResponse.ok) {
-      console.error('Mailgun error:', mailgunResult)
-      return new Response(
-        JSON.stringify({
-          error: 'Failed to send newsletter via Mailgun',
-          details: mailgunResult
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      const ids = resendResult.data
+      if (Array.isArray(ids) && ids.length > 0) lastResendId = ids[ids.length - 1].id
     }
 
     const { error: historyError } = await supabase
@@ -207,7 +215,7 @@ Deno.serve(async (req: Request) => {
         content,
         recipient_count: emailList.length,
         sent_by: adminEmail,
-        mailgun_id: mailgunResult.id
+        resend_id: lastResendId
       })
 
     if (historyError) {
@@ -218,7 +226,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         message: `Newsletter sent to ${emailList.length} subscribers`,
-        mailgunId: mailgunResult.id,
+        resendId: lastResendId,
         recipientCount: emailList.length
       }),
       {
