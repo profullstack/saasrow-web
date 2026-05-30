@@ -151,6 +151,8 @@ export default function AdminPage() {
   const [autoblogEnabled, setAutoblogEnabled] = useState(true)
   const [loadingAutoblogConfig, setLoadingAutoblogConfig] = useState(false)
   const [savingAutoblogConfig, setSavingAutoblogConfig] = useState(false)
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false)
+  const [webhookSecretCopied, setWebhookSecretCopied] = useState(false)
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
@@ -2386,13 +2388,42 @@ export default function AdminPage() {
                       <label className="block text-white/80 font-ubuntu text-sm mb-2">
                         Webhook Secret
                       </label>
-                      <input
-                        type="password"
-                        value={autoblogWebhookSecret}
-                        onChange={(e) => setAutoblogWebhookSecret(e.target.value)}
-                        placeholder="Paste the shared secret from crawlproof.com"
-                        className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu font-mono placeholder-white/30 transition"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showWebhookSecret ? 'text' : 'password'}
+                          value={autoblogWebhookSecret}
+                          onChange={(e) => setAutoblogWebhookSecret(e.target.value)}
+                          placeholder="Paste the shared secret from crawlproof.com"
+                          className="w-full px-4 py-3 pr-28 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu font-mono placeholder-white/30 transition"
+                        />
+                        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setShowWebhookSecret((v) => !v)}
+                            className="px-2 py-1 text-xs font-ubuntu text-white/60 hover:text-[#4FFFE3] transition"
+                            aria-label={showWebhookSecret ? 'Hide secret' : 'Show secret'}
+                          >
+                            {showWebhookSecret ? 'Hide' : 'Show'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!autoblogWebhookSecret) return
+                              try {
+                                await navigator.clipboard.writeText(autoblogWebhookSecret)
+                                setWebhookSecretCopied(true)
+                                setTimeout(() => setWebhookSecretCopied(false), 2000)
+                              } catch {
+                                // clipboard unavailable
+                              }
+                            }}
+                            className="px-2 py-1 text-xs font-ubuntu text-white/60 hover:text-[#4FFFE3] transition"
+                            aria-label="Copy secret"
+                          >
+                            {webhookSecretCopied ? 'Copied!' : 'Copy'}
+                          </button>
+                        </div>
+                      </div>
                       <p className="text-white/40 font-ubuntu text-xs mt-1">
                         This must match the secret configured on crawlproof.com exactly.
                         Used to verify Standard Webhooks HMAC-SHA256 signatures.
