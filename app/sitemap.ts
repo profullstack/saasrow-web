@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
-import { getAllSubmissions, getBlogList, getNewsList } from '@/lib/api'
+import { createClient } from '@supabase/supabase-js'
+import { getBlogList, getNewsList } from '@/lib/api'
 
 // Regenerate at most hourly so new listings/posts get picked up without
 // rebuilding the whole site.
@@ -10,9 +11,34 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.saasrow.com').rep
   '',
 )
 
+type SitemapSubmission = {
+  id: string
+  created_at: string | null
+  category: string | null
+  tags: string[] | null
+}
+
+// Fetch ALL approved listings directly (service role) — the public `submissions`
+// edge function caps at 50, which would truncate the sitemap.
+async function getApprovedSubmissions(): Promise<SitemapSubmission[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return []
+  try {
+    const admin = createClient(url, key, { auth: { persistSession: false } })
+    const { data } = await admin
+      .from('software_submissions')
+      .select('id, created_at, category, tags')
+      .eq('status', 'approved')
+    return (data ?? []) as SitemapSubmission[]
+  } catch {
+    return []
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [submissions, blog, news] = await Promise.all([
-    getAllSubmissions().catch(() => []),
+    getApprovedSubmissions(),
     getBlogList().catch(() => []),
     getNewsList().catch(() => []),
   ])
@@ -50,7 +76,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Category + tag landing pages (links are lowercased in the app)
   const categories = [
-    ...new Set(submissions.map((s) => s.category).filter(Boolean)),
+    ...new Set(
+      submissions.map((s) => s.category).filter((c): c is string => Boolean(c)),
+    ),
   ]
   const categoryEntries: MetadataRoute.Sitemap = categories.map((c) => ({
     url: `${SITE}/category/${encodeURIComponent(c.toLowerCase())}`,
