@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import { ReferralProvider } from '@profullstack/referrals/react';
 import Script from 'next/script'
 import './globals.css'
 
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
+        <ReferralProvider>{children}</ReferralProvider>
         <Script
           src="https://analytics.ahrefs.com/analytics.js"
           data-key="jrCaJNA5B0FqNBQqJOAaYw"
