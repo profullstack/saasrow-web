@@ -63,6 +63,20 @@ export async function getAllSubmissions(): Promise<Submission[]> {
 }
 
 export async function getSubmissionById(id: string): Promise<Submission | null> {
+  // Query directly by ID so we find items regardless of the edge function's
+  // status filter or pagination limit.
+  try {
+    const { createSupabaseServerClient } = await import('./supabaseServer')
+    const sb = await createSupabaseServerClient()
+    const { data, error } = await sb
+      .from('software_submissions')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (!error && data) return data as Submission
+  } catch {
+    // fall through to edge function fallback
+  }
   const all = await getAllSubmissions()
   return all.find((s) => s.id === id) ?? null
 }
