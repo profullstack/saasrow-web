@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { callFn } from '@/lib/clientApi'
-
+import { sanitizeHtml } from '../lib/sanitize'
 interface Submission {
   id: string
   title: string
@@ -1684,7 +1685,7 @@ export default function AdminPage() {
                             <h4 className="text-white text-lg font-bold font-ubuntu mb-4">Full Content Preview:</h4>
                             <div
                               className="text-white/80 font-ubuntu max-w-none [&_h2]:text-white [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:mt-6 [&_h2]:mb-4 [&_p]:mb-4 [&_p]:leading-relaxed [&_ul]:mb-4 [&_ul]:ml-6 [&_ul]:list-disc [&_li]:mb-2 [&_strong]:text-white [&_strong]:font-bold"
-                              dangerouslySetInnerHTML={{ __html: post.content }}
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
                             />
                           </div>
                         )}

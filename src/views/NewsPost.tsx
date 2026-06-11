@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { sanitizeHtml } from '../lib/sanitize'
 
 interface NewsPost {
   id: string
@@ -131,7 +132,7 @@ export default function NewsPostPage({ initialPost }: NewsPostPageProps = {}) {
 
               <div
                 className="prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
                 style={{
                   color: 'rgba(255, 255, 255, 0.85)',
                   fontFamily: 'Ubuntu, sans-serif',
