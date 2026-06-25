@@ -7,6 +7,11 @@ export const revalidate = 60
 export const metadata: Metadata = {
   title: 'Blog',
   description: 'Articles, guides, and insights about software and productivity',
+  alternates: {
+    types: {
+      'application/rss+xml': '/blog/rss.xml',
+    },
+  },
 }
 
 export default async function Page() {
