@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       return corsResponse({ error: 'Method not allowed' }, 405);
     }
 
-    const { price_id, success_url, cancel_url, mode, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
+    const { price_id, success_url, cancel_url, mode, tier, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
 
     const error = validateParameters(
       { price_id, success_url, cancel_url, mode },
@@ -71,6 +71,12 @@ Deno.serve(async (req) => {
 
     if (customer_email) {
       sessionParams.customer_email = customer_email;
+    }
+
+    // Tier the purchase grants. Required for one-time (mode: 'payment')
+    // checkouts so the webhook knows which tier to grant.
+    if (tier) {
+      sessionParams.metadata.tier = tier;
     }
 
     if (datafast_visitor_id) {

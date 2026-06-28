@@ -105,6 +105,22 @@ async function handleEvent(event: Stripe.Event) {
           console.info(`Created order record for session ${checkoutSession.id}`);
         }
       }
+
+      // One-time payments (e.g. Premium lifetime listing) don't create a
+      // subscription, so grant the purchased tier directly here.
+      if (!isSubscription && checkoutSession.payment_status === 'paid') {
+        const tier = (checkoutSession.metadata?.tier || '').toLowerCase();
+        const purchaserEmail =
+          checkoutSession.customer_details?.email || checkoutSession.customer_email || null;
+
+        if (!tier) {
+          console.warn(`One-time payment for session ${checkoutSession.id} has no tier metadata; skipping tier grant`);
+        } else if (!purchaserEmail) {
+          console.error(`One-time payment for session ${checkoutSession.id} has no email; cannot grant tier`);
+        } else {
+          await grantOneTimeTier(purchaserEmail, tier);
+        }
+      }
     }
 
     // Handle recurring invoice payments
@@ -366,5 +382,85 @@ async function syncCustomerFromStripe(customerId: string) {
   } catch (error) {
     console.error(`Failed to sync subscription for customer ${customerId}:`, error);
     throw error;
+  }
+}
+
+// Grants a tier for a one-time (non-subscription) purchase. Mirrors the
+// token/submission upgrade that syncCustomerFromStripe performs for
+// subscriptions, but is permanent since there's no billing cycle to expire.
+async function grantOneTimeTier(email: string, tier: string) {
+  const tierLevels: Record<string, number> = { free: 0, featured: 1, premium: 2 };
+
+  const { data: existingToken } = await supabase
+    .from('user_tokens')
+    .select('token, tier')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (!existingToken) {
+    const { data: newToken, error: tokenError } = await supabase
+      .from('user_tokens')
+      .insert({ email, tier })
+      .select()
+      .maybeSingle();
+
+    if (tokenError) {
+      console.error('Error creating user token:', tokenError);
+      return;
+    }
+
+    if (newToken) {
+      console.info(`Created user token for ${email} with one-time tier: ${tier}`);
+      const managementUrl = `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/manage/${newToken.token}`;
+      console.log('Management URL:', managementUrl);
+    }
+  } else {
+    const oldTier = existingToken.tier;
+    const isUpgrade = (tierLevels[tier] ?? 0) > (tierLevels[oldTier] ?? 0);
+
+    if (!isUpgrade) {
+      console.info(`One-time purchase for ${email} (${tier}) does not upgrade existing tier ${oldTier}; leaving as-is`);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('user_tokens')
+      .update({ tier })
+      .eq('email', email);
+
+    if (updateError) {
+      console.error(`Error updating tier for ${email}:`, updateError);
+      return;
+    }
+    console.info(`Updated tier for ${email} from ${oldTier} to one-time tier: ${tier}`);
+  }
+
+  const { error: upgradeError } = await supabase
+    .from('software_submissions')
+    .update({ tier })
+    .eq('email', email);
+
+  if (upgradeError) {
+    console.error(`Error upgrading submissions for ${email}:`, upgradeError);
+  } else {
+    console.info(`Upgraded all submissions for ${email} to tier: ${tier}`);
+  }
+
+  try {
+    const notificationUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-admin-notification`;
+    await fetch(notificationUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'new_subscription',
+        data: { email, tier },
+      }),
+    });
+    console.log(`Admin notification sent for new one-time ${tier} purchase`);
+  } catch (notificationError) {
+    console.error('Error sending admin notification:', notificationError);
   }
 }

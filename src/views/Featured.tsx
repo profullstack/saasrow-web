@@ -59,6 +59,9 @@ export default function FeaturedPage() {
       yearlyPrice: 0,
       monthlyPriceId: null,
       yearlyPriceId: null,
+      oneTime: false,
+      oneTimePrice: 0,
+      oneTimePriceId: null as string | null,
       features: [
         'Dofollow backlink',
         'Submit 1 software listing',
@@ -75,6 +78,9 @@ export default function FeaturedPage() {
       yearlyPrice: 19.2,
       monthlyPriceId: 'price_1SLuVoEfmU4X8cUlYucpStOt',
       yearlyPriceId: 'price_1SLuWrEfmU4X8cUlwxalZJsT',
+      oneTime: false,
+      oneTimePrice: 0,
+      oneTimePriceId: null as string | null,
       features: [
         '✅ No expiration - Permanent listings',
         'Dofollow backlink',
@@ -89,11 +95,18 @@ export default function FeaturedPage() {
     {
       name: 'Premium',
       description: 'For established brands',
-      monthlyPrice: 4,
-      yearlyPrice: 38.4,
-      monthlyPriceId: 'price_1SLuXuEfmU4X8cUllzHZ8zt8',
-      yearlyPriceId: 'price_1SLuYiEfmU4X8cUlttdoOo8j',
+      monthlyPrice: 2,
+      yearlyPrice: 2,
+      monthlyPriceId: null,
+      yearlyPriceId: null,
+      // One-time payment instead of a recurring subscription.
+      // TODO: replace with the real $2 one-time price created on the Premium
+      // product in Stripe (the .env STRIPE_SECRET_KEY is a placeholder).
+      oneTime: true,
+      oneTimePrice: 2,
+      oneTimePriceId: 'price_REPLACE_WITH_PREMIUM_ONETIME_ID' as string | null,
       features: [
+        '✅ One-time payment - no recurring fees',
         '✅ No expiration - Permanent listings',
         'Dofollow backlink',
         'Unlimited software listings',
@@ -128,13 +141,14 @@ export default function FeaturedPage() {
   ]
 
   const getDisplayPrice = (plan: typeof pricingPlans[0]) => {
+    if (plan.oneTime) return `$${plan.oneTimePrice.toFixed(2).replace(/\.00$/, '')}`
     if (plan.monthlyPrice === 0) return '$0'
     const price = billingPeriod === 'yearly' ? plan.yearlyPrice / 12 : plan.monthlyPrice
     return `$${price.toFixed(2).replace(/\.00$/, '')}`
   }
 
   const getSavings = (plan: typeof pricingPlans[0]) => {
-    if (plan.monthlyPrice === 0) return null
+    if (plan.oneTime || plan.monthlyPrice === 0) return null
     const yearlySavings = (plan.monthlyPrice * 12) - plan.yearlyPrice
     return yearlySavings > 0 ? `Save $${yearlySavings.toFixed(2)}/year` : null
   }
@@ -201,8 +215,13 @@ export default function FeaturedPage() {
     setShowEmailModal(false)
 
     try {
-      const priceId = billingPeriod === 'yearly' ? pendingPlan.yearlyPriceId : pendingPlan.monthlyPriceId
       const tier = pendingPlan.name.toLowerCase()
+      const isOneTime = pendingPlan.oneTime
+      const priceId = isOneTime
+        ? pendingPlan.oneTimePriceId
+        : billingPeriod === 'yearly'
+          ? pendingPlan.yearlyPriceId
+          : pendingPlan.monthlyPriceId
       const currentUrl = window.location.origin + '/featured'
       const successUrl = `${currentUrl}?success=true&tier=${tier}&email=${encodeURIComponent(email)}`
       const cancelUrl = `${currentUrl}?cancelled=true&plan=${tier}&period=${billingPeriod}`
@@ -220,7 +239,8 @@ export default function FeaturedPage() {
           price_id: priceId,
           success_url: successUrl,
           cancel_url: cancelUrl,
-          mode: 'subscription',
+          mode: isOneTime ? 'payment' : 'subscription',
+          tier,
           discount_code: pendingDiscount,
           customer_email: email,
           datafast_visitor_id: getCookie('datafast_visitor_id'),
@@ -350,12 +370,15 @@ export default function FeaturedPage() {
                   <span className="text-white text-5xl font-bold font-ubuntu">
                     {getDisplayPrice(plan)}
                   </span>
-                  <span className="text-white/70 font-ubuntu">/month</span>
+                  <span className="text-white/70 font-ubuntu">{plan.oneTime ? ' one-time' : '/month'}</span>
                 </div>
-                {billingPeriod === 'yearly' && getSavings(plan) && (
+                {plan.oneTime && (
+                  <p className="text-[#4FFFE3] text-sm font-ubuntu mb-4">Pay once, listed forever</p>
+                )}
+                {!plan.oneTime && billingPeriod === 'yearly' && getSavings(plan) && (
                   <p className="text-[#4FFFE3] text-sm font-ubuntu mb-4">{getSavings(plan)}</p>
                 )}
-                {billingPeriod === 'yearly' && plan.yearlyPrice > 0 && (
+                {!plan.oneTime && billingPeriod === 'yearly' && plan.yearlyPrice > 0 && (
                   <p className="text-white/50 text-sm font-ubuntu mb-4">
                     Billed ${plan.yearlyPrice.toFixed(2)} annually
                   </p>
