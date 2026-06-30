@@ -75,13 +75,17 @@ export default function FeaturedPage() {
       name: 'Featured',
       description: 'For growing companies',
       monthlyPrice: 2,
-      yearlyPrice: 19.2,
-      monthlyPriceId: 'price_1SLuVoEfmU4X8cUlYucpStOt',
-      yearlyPriceId: 'price_1SLuWrEfmU4X8cUlwxalZJsT',
-      oneTime: false,
-      oneTimePrice: 0,
-      oneTimePriceId: null as string | null,
+      yearlyPrice: 2,
+      monthlyPriceId: null,
+      yearlyPriceId: null,
+      // One-time payment instead of a recurring subscription.
+      // TODO: replace with the real $2 one-time price on the Featured product
+      // in Stripe.
+      oneTime: true,
+      oneTimePrice: 2,
+      oneTimePriceId: 'price_REPLACE_WITH_FEATURED_ONETIME_ID' as string | null,
       features: [
+        '✅ One-time payment - no recurring fees',
         '✅ No expiration - Permanent listings',
         'Dofollow backlink',
         'Up to 5 software listings',
@@ -95,15 +99,15 @@ export default function FeaturedPage() {
     {
       name: 'Premium',
       description: 'For established brands',
-      monthlyPrice: 2,
-      yearlyPrice: 2,
+      monthlyPrice: 5,
+      yearlyPrice: 5,
       monthlyPriceId: null,
       yearlyPriceId: null,
       // One-time payment instead of a recurring subscription.
-      // TODO: replace with the real $2 one-time price created on the Premium
-      // product in Stripe (the .env STRIPE_SECRET_KEY is a placeholder).
+      // TODO: replace with the real $5 one-time price on the Premium product
+      // in Stripe (the .env STRIPE_SECRET_KEY is a placeholder).
       oneTime: true,
-      oneTimePrice: 2,
+      oneTimePrice: 5,
       oneTimePriceId: 'price_REPLACE_WITH_PREMIUM_ONETIME_ID' as string | null,
       features: [
         '✅ One-time payment - no recurring fees',
@@ -128,15 +132,15 @@ export default function FeaturedPage() {
     },
     {
       question: 'How does pricing work?',
-      answer: 'Choose from our flexible plans based on your needs. Annual plans save you 2 months compared to monthly billing. All paid plans include priority support.',
+      answer: 'Featured ($2) and Premium ($5) are one-time payments — pay once and your listing stays live forever. No subscriptions, no recurring fees.',
     },
     {
-      question: 'Can I cancel anytime?',
-      answer: 'Yes, you can cancel your subscription at any time. Your listings will remain active until the end of your billing period.',
+      question: 'Are there any recurring charges?',
+      answer: 'No. Paid plans are a single one-time fee, so there is nothing to cancel and you are never billed again. Your listing is permanent.',
     },
     {
-      question: 'What happens to my listings if I downgrade?',
-      answer: 'Your listings stay active, but premium features like featured badges and priority placement will be removed. You can always upgrade again.',
+      question: 'Can I upgrade later?',
+      answer: 'Yes — you can move from Featured to Premium at any time by paying the Premium fee. Your existing listings stay live throughout.',
     },
   ]
 
@@ -292,7 +296,7 @@ export default function FeaturedPage() {
                   LIMITED OFFER
                 </div>
                 <p className="text-neutral-800 font-ubuntu font-bold text-lg">
-                  Subscribe to our newsletter and get 50% OFF all plans - applies to all recurring payments!
+                  Subscribe to our newsletter and get 50% OFF — applies to all one-time plans!
                 </p>
               </div>
               <form onSubmit={handleNewsletterSubmit} className="flex gap-2 w-full md:w-auto">
@@ -326,30 +330,9 @@ export default function FeaturedPage() {
             People visit our platform when looking for alternatives or when comparing products.
           </p>
 
-          <div className="mb-8">
-            <div className="inline-flex bg-[#4a4a4a] rounded-full p-1 gap-1">
-              <button
-                onClick={() => setBillingPeriod('yearly')}
-                className={`px-6 py-2 rounded-full font-ubuntu font-bold transition-all ${
-                  billingPeriod === 'yearly'
-                    ? 'bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800'
-                    : 'text-white'
-                }`}
-              >
-                Yearly <span className="text-sm opacity-70">(Save 20%)</span>
-              </button>
-              <button
-                onClick={() => setBillingPeriod('monthly')}
-                className={`px-6 py-2 rounded-full font-ubuntu font-bold transition-all ${
-                  billingPeriod === 'monthly'
-                    ? 'bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800'
-                    : 'text-white'
-                }`}
-              >
-                Monthly
-              </button>
-            </div>
-          </div>
+          <p className="text-[#4FFFE3] text-lg font-ubuntu font-bold mb-8">
+            Simple one-time pricing — pay once, listed forever.
+          </p>
 
           <div className="grid md:grid-cols-3 gap-6 mb-16">
             {pricingPlans.map((plan) => (
