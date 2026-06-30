@@ -39,13 +39,12 @@ Deno.serve(async (req) => {
       return corsResponse({ error: 'Method not allowed' }, 405);
     }
 
-    const { price_id, success_url, cancel_url, mode, tier, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
+    const { price_id, amount, product_name, success_url, cancel_url, mode, tier, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
 
     const error = validateParameters(
-      { price_id, success_url, cancel_url, mode },
+      { success_url, cancel_url, mode },
       {
         cancel_url: 'string',
-        price_id: 'string',
         success_url: 'string',
         mode: { values: ['payment', 'subscription'] },
       },
@@ -55,14 +54,33 @@ Deno.serve(async (req) => {
       return corsResponse({ error }, 400);
     }
 
+    // Two ways to price a line item:
+    //  - `amount` (cents) + `product_name`: build the price inline (price_data).
+    //    Lets us charge a one-time fee without pre-creating a Stripe Price, so
+    //    it works against whatever account this function's key belongs to.
+    //  - `price_id`: reference an existing Stripe Price (e.g. subscriptions).
+    const hasInlineAmount = Number.isInteger(amount) && amount > 0;
+    if (!hasInlineAmount && typeof price_id !== 'string') {
+      return corsResponse({ error: 'Either amount (cents) or price_id is required' }, 400);
+    }
+    if (hasInlineAmount && mode !== 'payment') {
+      return corsResponse({ error: 'Inline amount is only supported for one-time payments (mode: payment)' }, 400);
+    }
+
+    const lineItem = hasInlineAmount
+      ? {
+          price_data: {
+            currency: 'usd',
+            unit_amount: amount,
+            product_data: { name: product_name || 'SaaSRow listing' },
+          },
+          quantity: 1,
+        }
+      : { price: price_id, quantity: 1 };
+
     const sessionParams: any = {
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: price_id,
-          quantity: 1,
-        },
-      ],
+      line_items: [lineItem],
       mode,
       success_url,
       cancel_url,

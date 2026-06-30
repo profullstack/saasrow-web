@@ -61,7 +61,6 @@ export default function FeaturedPage() {
       yearlyPriceId: null,
       oneTime: false,
       oneTimePrice: 0,
-      oneTimePriceId: null as string | null,
       features: [
         'Dofollow backlink',
         'Submit 1 software listing',
@@ -78,12 +77,9 @@ export default function FeaturedPage() {
       yearlyPrice: 2,
       monthlyPriceId: null,
       yearlyPriceId: null,
-      // One-time payment instead of a recurring subscription.
-      // TODO: replace with the real $2 one-time price on the Featured product
-      // in Stripe.
+      // One-time payment instead of a recurring subscription (priced inline).
       oneTime: true,
       oneTimePrice: 2,
-      oneTimePriceId: 'price_REPLACE_WITH_FEATURED_ONETIME_ID' as string | null,
       features: [
         '✅ One-time payment - no recurring fees',
         '✅ No expiration - Permanent listings',
@@ -103,12 +99,9 @@ export default function FeaturedPage() {
       yearlyPrice: 5,
       monthlyPriceId: null,
       yearlyPriceId: null,
-      // One-time payment instead of a recurring subscription.
-      // TODO: replace with the real $5 one-time price on the Premium product
-      // in Stripe (the .env STRIPE_SECRET_KEY is a placeholder).
+      // One-time payment instead of a recurring subscription (priced inline).
       oneTime: true,
       oneTimePrice: 5,
-      oneTimePriceId: 'price_REPLACE_WITH_PREMIUM_ONETIME_ID' as string | null,
       features: [
         '✅ One-time payment - no recurring fees',
         '✅ No expiration - Permanent listings',
@@ -221,8 +214,10 @@ export default function FeaturedPage() {
     try {
       const tier = pendingPlan.name.toLowerCase()
       const isOneTime = pendingPlan.oneTime
+      // One-time plans are priced inline (amount in cents) so no pre-created
+      // Stripe Price is needed; subscriptions still use their Price ID.
       const priceId = isOneTime
-        ? pendingPlan.oneTimePriceId
+        ? undefined
         : billingPeriod === 'yearly'
           ? pendingPlan.yearlyPriceId
           : pendingPlan.monthlyPriceId
@@ -241,6 +236,8 @@ export default function FeaturedPage() {
         method: 'POST',
         body: {
           price_id: priceId,
+          amount: isOneTime ? Math.round(pendingPlan.oneTimePrice * 100) : undefined,
+          product_name: isOneTime ? `SaaSRow ${pendingPlan.name} Listing` : undefined,
           success_url: successUrl,
           cancel_url: cancelUrl,
           mode: isOneTime ? 'payment' : 'subscription',
