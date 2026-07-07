@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link'
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { AdUnit } from '../components/AdUnit'
 import { supabase } from '../lib/supabase';
 import { Heart, ExternalLink } from 'lucide-react';
 import { BookmarkButton } from '../components/BookmarkButton';
@@ -194,6 +195,7 @@ export function Favorites() {
           )}
         </div>
       </main>
+      <AdUnit />
       <Footer />
     </div>
   );

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 import { SoftwareCard } from '../components/SoftwareCard'
 import { callFn } from '@/lib/clientApi'
 
@@ -269,6 +270,7 @@ export default function TagsPage({ initialTags, initialSoftware }: TagsPageProps
           )}
         </main>
 
+        <AdUnit />
         <Footer />
       </div>
     </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 
 interface BlogPost {
   id: string
@@ -187,6 +188,7 @@ export default function BlogPostPage({ initialPost }: BlogPostPageProps = {}) {
           </article>
         </main>
 
+        <AdUnit />
         <Footer />
       </div>
 

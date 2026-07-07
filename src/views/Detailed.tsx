@@ -1,5 +1,6 @@
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 
 export default function DetailedPage() {
   return (
@@ -98,6 +99,7 @@ export default function DetailedPage() {
           </div>
         </main>
 
+        <AdUnit />
         <Footer />
       </div>
     </div>

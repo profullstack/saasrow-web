@@ -6,6 +6,7 @@ import { Header } from '../components/Header'
 import { SearchSection } from '../components/SearchSection'
 import { SoftwareListings } from '../components/SoftwareListings'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 import { FloatingCTA } from '../components/FloatingCTA'
 import { callFn } from '@/lib/clientApi'
 
@@ -136,6 +137,7 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
           selectedSort={selectedSort}
           initialListings={initialListings}
         />
+        <AdUnit />
         <Footer />
         <FloatingCTA />
       </div>

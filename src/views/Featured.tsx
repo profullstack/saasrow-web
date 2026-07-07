@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 import { DiscountPopup } from '../components/DiscountPopup'
 import { Alert } from '../components/Alert'
 import { supabase } from '../lib/supabase'
@@ -413,6 +414,7 @@ export default function FeaturedPage() {
           </div>
         </section>
 
+        <AdUnit />
         <Footer />
       </div>
 

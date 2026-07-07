@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 
 interface BlogPost {
   id: string
@@ -131,6 +132,7 @@ export default function BlogPage({ initialPosts }: BlogPageProps = {}) {
           </div>
         </main>
 
+        <AdUnit />
         <Footer />
       </div>
     </div>

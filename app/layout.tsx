@@ -48,7 +48,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           defer
         />
               <Script data-site="f2463c61-25b8-47af-bf2a-096563b37bf5" src="https://crawlproof.com/stats.js" strategy="afterInteractive" />
-      <script async src="https://feedback.profullstack.com/embed/profullstack-feedback.js" data-property="saasrow.com"></script>        <div data-cp-ad="" data-slot="f04c05e3-f8b5-4209-883b-d0447800872b" data-format="banner_300x250" />
+      <script async src="https://feedback.profullstack.com/embed/profullstack-feedback.js" data-property="saasrow.com"></script>
+      {/* CrawlProof ad loader: scans for [data-cp-ad] slots (rendered by <AdUnit />) and fills them in place. */}
       <Script src="https://crawlproof.com/ad.js" strategy="afterInteractive" />
       </body>
     </html>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 import { callFn } from '@/lib/clientApi'
 
 interface CategoryCount {
@@ -113,6 +114,7 @@ export default function CategoriesPage({ initialCategories }: CategoriesPageProp
           )}
         </main>
 
+        <AdUnit />
         <Footer />
       </div>
     </div>

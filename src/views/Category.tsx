@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
+import { AdUnit } from '../components/AdUnit'
 import { FloatingCTA } from '../components/FloatingCTA'
 import { SoftwareCard } from '../components/SoftwareCard'
 import { callFn } from '@/lib/clientApi'
@@ -161,6 +162,7 @@ export default function CategoryPage({ initialSubmissions }: CategoryPageProps =
           )}
         </main>
 
+        <AdUnit />
         <Footer />
         <FloatingCTA />
       </div>
