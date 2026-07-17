@@ -16,6 +16,7 @@
     "@netlify/plugin-nextjs": "^5.15.10",
     "@profullstack/autoblog": "^0.3.0",
     "@profullstack/referrals": "^0.1.0",
+    "@profullstack/stack": "^0.1.0",
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.76.1",
