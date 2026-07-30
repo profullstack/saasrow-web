@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { markdownToEmailHtml, markdownToPlainText } from '../_shared/emailMarkdown.ts'
+import { sendableEmails } from '../_shared/emailRecipients.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -77,11 +78,19 @@ Deno.serve(async (req: Request) => {
       for (const row of tokens ?? []) if (row.email) emailSet.add(row.email.toLowerCase())
     }
 
-    const emailList = Array.from(emailSet)
+    // Resend 422s an entire batch of 100 if a single address sits on a reserved domain
+    // (example.com and friends), so seed/test rows are dropped before we send.
+    const emailList = sendableEmails(emailSet)
+    const skippedCount = emailSet.size - emailList.length
 
     if (emailList.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'No recipients found for the selected audience' }),
+        JSON.stringify({
+          error:
+            skippedCount > 0
+              ? `No sendable recipients: all ${skippedCount} address(es) are invalid or on a reserved domain such as example.com`
+              : 'No recipients found for the selected audience',
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -121,6 +130,8 @@ Deno.serve(async (req: Request) => {
     // Resend's batch endpoint sends individual emails (one per recipient, max 100 per call)
     const BATCH_SIZE = 100
     let totalSent = 0
+    let totalFailed = 0
+    let firstError = ''
     let lastResendId = ''
 
     for (let i = 0; i < emailList.length; i += BATCH_SIZE) {
@@ -144,13 +155,26 @@ Deno.serve(async (req: Request) => {
       })
 
       const resendResult = await resendResponse.json()
+
+      // A rejected batch must not lose the batches that follow it.
       if (!resendResponse.ok) {
-        throw new Error(`Resend error: ${JSON.stringify(resendResult)}`)
+        totalFailed += batch.length
+        const message = resendResult?.message ?? JSON.stringify(resendResult)
+        if (!firstError) firstError = message
+        console.error(`Resend batch ${i / BATCH_SIZE + 1} failed: ${message}`)
+        continue
       }
 
       totalSent += batch.length
       const ids = resendResult.data
       if (Array.isArray(ids) && ids.length > 0) lastResendId = ids[ids.length - 1].id
+    }
+
+    if (totalSent === 0) {
+      return new Response(
+        JSON.stringify({ error: `Resend error: ${firstError || 'no emails were accepted'}` }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
 
     const { error: historyError } = await supabase
@@ -166,13 +190,20 @@ Deno.serve(async (req: Request) => {
     if (historyError) console.error('Failed to save broadcast history:', historyError)
 
     return new Response(
-      JSON.stringify({ success: true, recipientCount: totalSent, resendId: lastResendId }),
+      JSON.stringify({
+        success: true,
+        recipientCount: totalSent,
+        skippedCount,
+        failedCount: totalFailed,
+        error: firstError || undefined,
+        resendId: lastResendId,
+      }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Broadcast error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

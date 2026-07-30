@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import { markdownToEmailHtml, markdownToPlainText } from '@/lib/emailMarkdown'
+import { isSendableEmail, sendableEmails } from '@/lib/emailRecipients'
 
 describe('markdownToEmailHtml', () => {
   it('returns an empty string for empty input', () => {
@@ -127,10 +128,51 @@ describe('markdownToPlainText', () => {
 })
 
 describe('renderer copies stay in sync', () => {
-  it('src/lib and supabase/functions/_shared hold identical files', () => {
-    const root = process.cwd()
-    const web = fs.readFileSync(path.join(root, 'src/lib/emailMarkdown.ts'), 'utf8')
-    const edge = fs.readFileSync(path.join(root, 'supabase/functions/_shared/emailMarkdown.ts'), 'utf8')
-    expect(edge).toBe(web)
+  it.each(['emailMarkdown.ts', 'emailRecipients.ts'])(
+    'src/lib and supabase/functions/_shared hold identical copies of %s',
+    (file) => {
+      const root = process.cwd()
+      const web = fs.readFileSync(path.join(root, 'src/lib', file), 'utf8')
+      const edge = fs.readFileSync(path.join(root, 'supabase/functions/_shared', file), 'utf8')
+      expect(edge).toBe(web)
+    }
+  )
+})
+
+describe('isSendableEmail', () => {
+  it('accepts ordinary addresses', () => {
+    expect(isSendableEmail('anthony@profullstack.com')).toBe(true)
+    expect(isSendableEmail('  Anthony+news@Sub.Domain.co.uk  ')).toBe(true)
+  })
+
+  it('rejects reserved domains Resend refuses with a 422', () => {
+    expect(isSendableEmail('user@example.com')).toBe(false)
+    expect(isSendableEmail('user@example.org')).toBe(false)
+    expect(isSendableEmail('user@test.com')).toBe(false)
+    expect(isSendableEmail('user@anything.invalid')).toBe(false)
+    expect(isSendableEmail('user@box.local')).toBe(false)
+  })
+
+  it('rejects malformed and empty addresses', () => {
+    expect(isSendableEmail('')).toBe(false)
+    expect(isSendableEmail(null)).toBe(false)
+    expect(isSendableEmail('not-an-email')).toBe(false)
+    expect(isSendableEmail('user@localhost')).toBe(false)
+    expect(isSendableEmail('two@addresses@here.com')).toBe(false)
+    expect(isSendableEmail('spaced out@here.com')).toBe(false)
+  })
+})
+
+describe('sendableEmails', () => {
+  it('normalises, de-duplicates and drops unsendable addresses', () => {
+    const out = sendableEmails([
+      'A@Saasrow.com',
+      'a@saasrow.com',
+      'seed@example.com',
+      null,
+      '  b@saasrow.com ',
+      'broken',
+    ])
+    expect(out).toEqual(['a@saasrow.com', 'b@saasrow.com'])
   })
 })

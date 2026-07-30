@@ -8,6 +8,7 @@ import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { callFn } from '@/lib/clientApi'
 import { markdownToEmailHtml } from '@/lib/emailMarkdown'
+import { isSendableEmail } from '@/lib/emailRecipients'
 
 type Audience = 'newsletter' | 'users' | 'all'
 
@@ -79,6 +80,11 @@ export default function EmailBroadcast() {
       const adminToken = sessionStorage.getItem('adminToken') ?? ''
 
       const emailSet = new Set<string>()
+      // Mirrors the edge function: unsendable addresses (example.com and friends) are
+      // excluded here too, so the count matches what Resend will actually accept.
+      const add = (email?: string | null) => {
+        if (isSendableEmail(email)) emailSet.add(email!.trim().toLowerCase())
+      }
 
       if (aud === 'newsletter' || aud === 'all') {
         const res = await callFn('newsletter', { query: { all: true }, adminToken })
@@ -86,7 +92,7 @@ export default function EmailBroadcast() {
           const json = await res.json()
           // newsletter returns { data: [...] }
           const rows: { is_active: boolean; email: string }[] = json.data ?? json.subscribers ?? []
-          for (const s of rows) if (s.is_active) emailSet.add(s.email.toLowerCase())
+          for (const s of rows) if (s.is_active) add(s.email)
         }
       }
 
@@ -94,11 +100,10 @@ export default function EmailBroadcast() {
         const res = await callFn('get-admin-users', { adminToken })
         if (res.ok) {
           const json = await res.json()
-          for (const t of json.tokens ?? []) if (t.email) emailSet.add(t.email.toLowerCase())
+          for (const t of json.tokens ?? []) add(t.email)
           // also count emails from submission_contacts via submissions
           for (const s of json.submissions ?? []) {
-            const email = s.submission_contacts?.email ?? s.email
-            if (email) emailSet.add(email.toLowerCase())
+            add(s.submission_contacts?.email ?? s.email)
           }
         }
       }
@@ -140,7 +145,10 @@ export default function EmailBroadcast() {
       })
       const result = await res.json()
       if (res.ok) {
-        setAlertMessage({ type: 'success', message: `Email sent to ${result.recipientCount} recipient${result.recipientCount !== 1 ? 's' : ''}!` })
+        const parts = [`Email sent to ${result.recipientCount} recipient${result.recipientCount !== 1 ? 's' : ''}!`]
+        if (result.skippedCount) parts.push(`${result.skippedCount} unsendable address${result.skippedCount !== 1 ? 'es' : ''} skipped.`)
+        if (result.failedCount) parts.push(`${result.failedCount} failed: ${result.error ?? 'unknown error'}`)
+        setAlertMessage({ type: result.failedCount ? 'warning' : 'success', message: parts.join(' ') })
         setSubject('')
         setContent('')
       } else {
