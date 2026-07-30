@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { markdownToEmailHtml, markdownToPlainText } from '../_shared/emailMarkdown.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,6 +86,11 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // The body is authored as markdown (plain text renders fine too) and converted to
+    // escaped, inline-styled HTML — pasted markup is never injected into the email.
+    const bodyHtml = markdownToEmailHtml(content)
+    const textContent = markdownToPlainText(content)
+
     const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
@@ -95,7 +101,6 @@ Deno.serve(async (req: Request) => {
     .header { background: linear-gradient(to bottom, #E0FF04, #4FFFE3); padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; }
     .header h1 { margin: 0; color: #000; font-size: 28px; }
     .content { background: #f9f9f9; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
-    .content p { margin-bottom: 15px; white-space: pre-wrap; }
     .footer { text-align: center; color: #666; font-size: 12px; padding: 20px; border-top: 1px solid #ddd; }
     .footer a { color: #4FFFE3; text-decoration: none; }
   </style>
@@ -103,7 +108,7 @@ Deno.serve(async (req: Request) => {
 <body>
   <div class="header"><h1>SaaSRow</h1></div>
   <div class="content">
-    ${content.split('\n').map(p => p.trim() ? `<p>${p}</p>` : '').join('')}
+    ${bodyHtml}
   </div>
   <div class="footer">
     <p>You're receiving this email because you have an account on SaaSRow.</p>
@@ -133,7 +138,7 @@ Deno.serve(async (req: Request) => {
             to: email,
             subject,
             html: htmlContent,
-            text: content,
+            text: textContent,
           }))
         ),
       })

@@ -7,6 +7,7 @@ import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { callFn } from '@/lib/clientApi'
+import { markdownToEmailHtml } from '@/lib/emailMarkdown'
 
 type Audience = 'newsletter' | 'users' | 'all'
 
@@ -277,19 +278,27 @@ export default function EmailBroadcast() {
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Write your message here. Plain text is fine — each paragraph becomes a block in the email."
+                placeholder={'Paste or write markdown — plain text works too.\n\n# Heading\n\nSome **bold** text with a [link](https://saasrow.com).\n\n- bullet one\n- bullet two'}
                 required
                 disabled={sending}
-                rows={12}
-                className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu placeholder-white/30 disabled:opacity-50 resize-y transition"
+                rows={14}
+                className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu placeholder-white/30 disabled:opacity-50 resize-y transition font-mono text-sm"
               />
+              <p className="text-white/40 font-ubuntu text-xs mt-2 leading-relaxed">
+                Markdown is converted to HTML for the email: headings (#), <strong className="font-bold">**bold**</strong>,{' '}
+                <em>*italic*</em>, [links](url), images, `code`, &gt; quotes, bullet and numbered lists, --- rules.
+                Plain text is fine as-is — line breaks are preserved. Pasted HTML is shown as text, not rendered.
+              </p>
             </div>
           </div>
 
           {/* Preview card */}
           {(subject || content) && (
             <div className="bg-[#3a3a3a] rounded-2xl p-6 sm:p-8">
-              <h2 className="text-white text-xl font-bold font-ubuntu mb-4">Preview</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-white text-xl font-bold font-ubuntu">Preview</h2>
+                <span className="text-white/40 font-ubuntu text-xs">Rendered exactly as the email will be</span>
+              </div>
               <div className="bg-white rounded-xl p-6 text-gray-800 font-sans text-sm leading-relaxed">
                 <div
                   className="mb-4 p-4 rounded-lg text-center font-bold text-lg"
@@ -300,11 +309,11 @@ export default function EmailBroadcast() {
                 {subject && (
                   <p className="font-bold text-base mb-3 text-gray-900">{subject}</p>
                 )}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  {content.split('\n').filter(l => l.trim()).map((line, i) => (
-                    <p key={i}>{line}</p>
-                  ))}
-                </div>
+                {/* Same renderer the edge function uses; input is escaped, so this is not raw user HTML. */}
+                <div
+                  className="bg-gray-50 rounded-lg p-4 overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: markdownToEmailHtml(content) }}
+                />
                 <p className="mt-4 text-xs text-gray-400 text-center">
                   You&apos;re receiving this because you have an account on SaaSRow.
                 </p>
