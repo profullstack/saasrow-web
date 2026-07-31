@@ -31,13 +31,18 @@ export async function GET(req: Request) {
     let result = data ?? []
 
     if (data && data.length < 3 && tags.length > 0) {
-      const { data: categoryData, error: catError } = await supabase
+      let categoryQuery = supabase
         .from('software_submissions')
         .select(columns)
         .eq('status', 'approved')
         .eq('category', category)
         .neq('id', currentId)
-        .not('id', 'in', `(${data.map((d) => d.id).join(',')})`)
+
+      if (data.length > 0) {
+        categoryQuery = categoryQuery.not('id', 'in', `(${data.map((d) => d.id).join(',')})`)
+      }
+
+      const { data: categoryData, error: catError } = await categoryQuery
         .order('upvotes', { ascending: false })
         .limit(6 - data.length)
 
