@@ -17,7 +17,19 @@ interface NotificationRequest {
   };
 }
 
-async function sendEmailViaResend(subject: string, htmlContent: string, textContent: string) {
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeReplyTo(email?: string) {
+  const trimmed = email?.trim();
+  return trimmed && EMAIL_PATTERN.test(trimmed) ? trimmed : undefined;
+}
+
+async function sendEmailViaResend(
+  subject: string,
+  htmlContent: string,
+  textContent: string,
+  replyTo?: string
+) {
   const resendApiKey = Deno.env.get("RESEND_API_KEY");
   const adminEmail = Deno.env.get("ADMIN_EMAIL");
 
@@ -38,6 +50,7 @@ async function sendEmailViaResend(subject: string, htmlContent: string, textCont
       subject,
       html: htmlContent,
       text: textContent,
+      ...(replyTo ? { reply_to: replyTo } : {}),
     }),
   });
 
@@ -73,6 +86,7 @@ Deno.serve(async (req: Request) => {
     let subject: string;
     let htmlContent: string;
     let textContent: string;
+    const replyTo = normalizeReplyTo(data.email);
 
     if (type === "new_submission") {
       subject = `🚀 New Submission: ${data.title || "Untitled"}`;
@@ -174,7 +188,7 @@ A new user has subscribed to the ${data.tier} tier. 🎉
       );
     }
 
-    const sent = await sendEmailViaResend(subject, htmlContent, textContent);
+    const sent = await sendEmailViaResend(subject, htmlContent, textContent, replyTo);
 
     return new Response(
       JSON.stringify({
