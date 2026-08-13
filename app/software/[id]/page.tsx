@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import SoftwareDetail from '@/views/SoftwareDetail'
+import JsonLd from '@/components/JsonLd'
 import { getSubmissionById, getPublicStorageUrl } from '@/lib/api'
+import { softwareApplicationLd, breadcrumbLd } from '@/lib/structuredData'
 
 export const revalidate = 60
 
@@ -27,7 +29,14 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
   return {
     title: submission.title,
     description,
-    alternates: { canonical: `/software/${submission.id}` },
+    alternates: {
+      canonical: `/software/${submission.id}`,
+      // Advertise the agent-friendly renderings alongside the HTML page.
+      types: {
+        'text/markdown': `/software/${submission.id}/markdown`,
+        'application/json': `/api/v1/products/${submission.id}`,
+      },
+    },
     openGraph: {
       title: submission.title,
       description,
@@ -50,5 +59,11 @@ export default async function Page({ params }: RouteProps) {
   if (!submission) {
     notFound()
   }
-  return <SoftwareDetail initialSubmission={submission} />
+  return (
+    <>
+      <JsonLd data={softwareApplicationLd(submission)} />
+      <JsonLd data={breadcrumbLd(submission)} />
+      <SoftwareDetail initialSubmission={submission} />
+    </>
+  )
 }

@@ -10,6 +10,7 @@ export interface Submission {
   email?: string
   status: string
   created_at: string
+  updated_at?: string
   submitted_at?: string
   logo?: string
   image?: string
@@ -22,6 +23,13 @@ export interface Submission {
   last_share_reset?: string
   featured?: boolean
   homepage_featured?: boolean
+  // Controlled-vocabulary fields (see src/lib/vocab.ts). Optional because the
+  // 300-odd listings that predate them have not been backfilled.
+  use_cases?: string[]
+  audiences?: string[]
+  platforms?: string[]
+  pricing_model?: string
+  alternatives?: string[]
 }
 
 export interface CategoryCount {

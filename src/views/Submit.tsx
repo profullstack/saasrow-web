@@ -6,6 +6,14 @@ import { Footer } from '../components/Footer'
 import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
+import VocabPicker from '../components/VocabPicker'
+import {
+  USE_CASES,
+  AUDIENCES,
+  PLATFORMS,
+  PRICING_MODELS,
+  normalizeAlternatives,
+} from '../lib/vocab'
 
 interface FetchedData {
   url: string
@@ -17,6 +25,24 @@ interface FetchedData {
   logo: string | null
 }
 
+// One definition of an empty form, so adding a field can't leave a reset path
+// behind with a stale shape.
+const EMPTY_FORM = {
+  title: '',
+  url: '',
+  description: '',
+  email: '',
+  category: '',
+  tags: [] as string[],
+  // Controlled-vocabulary fields. These are what make the listing findable
+  // through the API, the MCP server and AI assistants.
+  use_cases: [] as string[],
+  audiences: [] as string[],
+  platforms: [] as string[],
+  pricing_model: '',
+  alternatives: [] as string[],
+}
+
 export default function SubmitPage() {
   const [step, setStep] = useState<'url' | 'review' | 'edit'>('url')
   const [urls, setUrls] = useState('')
@@ -24,14 +50,7 @@ export default function SubmitPage() {
   const [submissions, setSubmissions] = useState<FetchedData[]>([])
   const [currentEditIndex, setCurrentEditIndex] = useState<number | null>(null)
   const [isFetching, setIsFetching] = useState(false)
-  const [formData, setFormData] = useState({
-    title: '',
-    url: '',
-    description: '',
-    email: '',
-    category: '',
-    tags: [] as string[],
-  })
+  const [formData, setFormData] = useState({ ...EMPTY_FORM })
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
@@ -276,7 +295,7 @@ export default function SubmitPage() {
     setUrl('')
     setSubmissions([])
     setCurrentEditIndex(null)
-    setFormData({ title: '', url: '', description: '', email: '', category: '', tags: [] })
+    setFormData({ ...EMPTY_FORM })
     setPreviewImage(null)
     setLogoUrl(null)
     setLogoFile(null)
@@ -290,10 +309,10 @@ export default function SubmitPage() {
     const submission = submissions[index]
     setCurrentEditIndex(index)
     setFormData({
+      ...EMPTY_FORM,
       title: submission.title,
       url: submission.url,
       description: submission.description,
-      email: '',
       category: submission.category,
       tags: submission.tags,
     })
@@ -428,7 +447,7 @@ export default function SubmitPage() {
 
   const handleBackToReview = () => {
     setCurrentEditIndex(null)
-    setFormData({ title: '', url: '', description: '', email: '', category: '', tags: [] })
+    setFormData({ ...EMPTY_FORM })
     setPreviewImage(null)
     setLogoUrl(null)
     setLogoFile(null)
@@ -455,6 +474,21 @@ export default function SubmitPage() {
         input.value = ''
       }
     }
+  }
+
+  const handleAddAlternative = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const input = e.currentTarget
+    const raw = input.value
+    if (!raw.trim()) return
+    setFormData((prev) => ({
+      // Re-normalizing the whole list keeps the de-duplication and the cap in
+      // one place rather than reimplementing them here.
+      ...prev,
+      alternatives: normalizeAlternatives([...prev.alternatives, raw]),
+    }))
+    input.value = ''
   }
 
   return (
@@ -1010,6 +1044,108 @@ export default function SubmitPage() {
                   <p className="text-white/50 text-sm font-ubuntu mt-2">
                     Press Enter to add tags. AI suggested: {formData.tags.join(', ')}
                   </p>
+                </div>
+
+                {/* Structured fields. Optional, but they are what let AI
+                    assistants and the public API match this product to a
+                    specific need rather than a keyword. */}
+                <div className="border-t border-white/10 pt-6 space-y-6">
+                  <div>
+                    <h3 className="text-white font-ubuntu text-xl font-bold mb-1">
+                      Help AI assistants find you
+                    </h3>
+                    <p className="text-white/60 font-ubuntu text-sm">
+                      Optional, and worth the minute it takes. These fields are published
+                      as structured data to search engines, our public API and our MCP
+                      server, so assistants can recommend your product for the right task.
+                    </p>
+                  </div>
+
+                  <VocabPicker
+                    label="Use cases"
+                    hint="What is this product for? Pick up to 5."
+                    options={USE_CASES}
+                    selected={formData.use_cases}
+                    max={5}
+                    onChange={(use_cases) => setFormData({ ...formData, use_cases })}
+                  />
+
+                  <VocabPicker
+                    label="Audiences"
+                    hint="Who is it built for? Pick up to 4."
+                    options={AUDIENCES}
+                    selected={formData.audiences}
+                    max={4}
+                    onChange={(audiences) => setFormData({ ...formData, audiences })}
+                  />
+
+                  <VocabPicker
+                    label="Platforms"
+                    hint="Where does it run?"
+                    options={PLATFORMS}
+                    selected={formData.platforms}
+                    onChange={(platforms) => setFormData({ ...formData, platforms })}
+                  />
+
+                  <div>
+                    <label className="block text-white font-ubuntu text-lg mb-2">
+                      Pricing model
+                    </label>
+                    <select
+                      value={formData.pricing_model}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pricing_model: e.target.value })
+                      }
+                      className="w-full px-4 py-3 bg-[#4a4a4a] text-white rounded-lg outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu"
+                    >
+                      <option value="">Not specified</option>
+                      {PRICING_MODELS.map((model) => (
+                        <option key={model} value={model} className="capitalize">
+                          {model.replace(/-/g, ' ')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-ubuntu text-lg mb-2">
+                      Alternative to
+                    </label>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {formData.alternatives.map((name, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-[#4FFFE3]/20 text-[#4FFFE3] rounded-full text-sm font-ubuntu"
+                        >
+                          {name}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                alternatives: formData.alternatives.filter(
+                                  (_, i) => i !== index,
+                                ),
+                              })
+                            }
+                            className="hover:text-white transition-colors"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      onKeyDown={handleAddAlternative}
+                      placeholder="e.g. Notion — press Enter to add"
+                      className="w-full px-4 py-3 bg-[#4a4a4a] text-white rounded-lg outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu"
+                    />
+                    <p className="text-white/50 text-sm font-ubuntu mt-2">
+                      Products yours competes with. This is how you show up when someone
+                      asks for an alternative to them.
+                    </p>
+                  </div>
                 </div>
               </div>
 
