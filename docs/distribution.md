@@ -83,13 +83,35 @@ curl -X POST localhost:3117/api/mcp -H 'Content-Type: application/json' \
 Note that `__tests__/api/*` are live-integration tests requiring Supabase
 credentials; they fail in a bare checkout and are unrelated to this layer.
 
+## Backfill
+
+The 302 listings that predate the vocabulary were backfilled deterministically
+from their existing `category` and `tags` by
+`supabase/migrations/20260813140000_backfill_vocabulary_from_tags.sql` —
+every term comes from an explicit mapping in that file, nothing is guessed, and
+a listing with no confident mapping is left NULL. Absent data beats wrong data
+when an assistant is going to repeat it as fact.
+
+Coverage: `use_cases` 214, `platforms` 70, `pricing_model` 20, `audiences` 29.
+The remaining gaps are mostly the generic `Software` category, which is too
+vague to imply a use case.
+
+The migration only touches rows where all four columns are still NULL, so it is
+idempotent and will never overwrite a value a maker set themselves.
+
 ## Deploying
 
 Merging does **not** deploy edge functions on this project. After changing
 `supabase/functions/submissions`, deploy it explicitly (Supabase MCP, project
-ref `yfkuksfqyddufusonyuf`). The migration in
-`supabase/migrations/20260813120000_add_distribution_layer.sql` has already
-been applied to production.
+ref `yfkuksfqyddufusonyuf`) — and pass `verify_jwt: false`, which is what this
+function runs with; the deploy tool defaults to `true` and would break it.
+
+Because the entrypoint imports `../_shared/vocab.ts`, deploy both files with
+their repo-relative paths (`submissions/index.ts` and `_shared/vocab.ts`) and
+set the entrypoint to `submissions/index.ts`, or the import will not resolve.
+
+Already applied to production as of 2026-08-13: both migrations, and version 85
+of the `submissions` function.
 
 ## Connecting the MCP server
 
