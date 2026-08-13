@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Category from '@/views/Category'
+import JsonLd from '@/components/JsonLd'
 import { getSubmissionsByCategory } from '@/lib/api'
+import { itemListLd, siteUrl } from '@/lib/structuredData'
 
 export const revalidate = 60
 
@@ -29,5 +31,16 @@ export default async function Page({ params }: RouteProps) {
   const { category } = await params
   const decoded = decodeURIComponent(category)
   const submissions = await getSubmissionsByCategory(decoded)
-  return <Category initialSubmissions={submissions} />
+  const display = decoded.charAt(0).toUpperCase() + decoded.slice(1)
+  return (
+    <>
+      <JsonLd
+        data={itemListLd(submissions, {
+          name: `${display} software on SaaSRow`,
+          url: `${siteUrl()}/category/${encodeURIComponent(decoded.toLowerCase())}`,
+        })}
+      />
+      <Category initialSubmissions={submissions} />
+    </>
+  )
 }

@@ -1,4 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import {
+  USE_CASES,
+  AUDIENCES,
+  PLATFORMS,
+  filterToVocabulary,
+  pickPricingModel,
+  cleanAlternatives,
+} from '../_shared/vocab.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -219,6 +227,15 @@ Deno.serve(async (req: Request) => {
       const body = await req.json()
       const { title, url: rawUrl, description, email, category, tags, logo, image, socialLinks } = body
 
+      // Controlled-vocabulary fields. Optional, and anything outside the
+      // vocabulary is discarded rather than rejected -- a bad tag should not
+      // cost someone their submission.
+      const useCases = filterToVocabulary(body.use_cases, USE_CASES, 5)
+      const audiences = filterToVocabulary(body.audiences, AUDIENCES, 4)
+      const platforms = filterToVocabulary(body.platforms, PLATFORMS, PLATFORMS.length)
+      const pricingModel = pickPricingModel(body.pricing_model)
+      const alternatives = cleanAlternatives(body.alternatives)
+
       if (!title || !rawUrl || !description || !email || !category) {
         return new Response(
           JSON.stringify({ error: 'Missing required fields: title, url, description, email, category' }),
@@ -273,6 +290,11 @@ Deno.serve(async (req: Request) => {
           description,
           category,
           tags: tags || [],
+          use_cases: useCases,
+          audiences,
+          platforms,
+          pricing_model: pricingModel,
+          alternatives,
           logo,
           image,
           status: 'pending',

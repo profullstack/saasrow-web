@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { ReferralProvider } from '@profullstack/referrals/react';
 import { FeedbackWidget } from '@profullstack/stack/feedback';
 import Script from 'next/script'
+import JsonLd from '@/components/JsonLd'
+import { websiteLd, organizationLd } from '@/lib/structuredData'
 import './globals.css'
 
 const SITE_URL = 'https://saasrow.com'
@@ -33,6 +35,18 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        {/* Site-level identity + SearchAction, so an assistant can query the
+            directory directly instead of scraping listing pages. */}
+        <JsonLd data={websiteLd()} />
+        <JsonLd data={organizationLd()} />
+        <link
+          rel="alternate"
+          type="text/plain"
+          href="/llms.txt"
+          title="LLM-readable site index"
+        />
+      </head>
       <body>
         <ReferralProvider>{children}</ReferralProvider>
         <Script
