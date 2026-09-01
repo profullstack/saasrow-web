@@ -116,6 +116,7 @@ export default function AdminPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [bulkApproving, setBulkApproving] = useState(false)
   const [activeTab, setActiveTab] = useState<'submissions' | 'news' | 'newsletter' | 'users' | 'analytics' | 'comments' | 'autoblog'>('submissions')
   const [newsTopic, setNewsTopic] = useState('')
   const [newsTone, setNewsTone] = useState<'casual' | 'professional' | 'technical'>('casual')
@@ -334,6 +335,88 @@ export default function AdminPage() {
     if (filter === 'all') return true
     return sub.status === filter
   })
+
+  // Bulk approval only ever touches pending items — a rejection was a deliberate
+  // decision and should not be reversed by a single click.
+  const approvableSubmissions = filteredSubmissions.filter((sub) => sub.status === 'pending')
+
+  const approveAll = () => {
+    const targets = approvableSubmissions
+    if (targets.length === 0) return
+
+    setConfirmDialog({
+      title: 'Approve All',
+      message: `Approve ${targets.length} pending submission${targets.length === 1 ? '' : 's'}? They will go live on the directory immediately.`,
+      onConfirm: () => {
+        setConfirmDialog(null)
+        performApproveAll(targets.map((sub) => sub.id))
+      },
+    })
+  }
+
+  const performApproveAll = async (ids: string[]) => {
+    const token = sessionStorage.getItem('adminToken')
+    if (!token) {
+      setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+      return
+    }
+
+    setBulkApproving(true)
+
+    const approved: string[] = []
+    let failed = 0
+
+    // Approve in small batches so a long pending queue does not open one
+    // request per submission all at once.
+    const BATCH_SIZE = 4
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const batch = ids.slice(i, i + BATCH_SIZE)
+      await Promise.all(
+        batch.map(async (id) => {
+          try {
+            const response = await callFn('admin-submissions', {
+              method: 'PATCH',
+              body: { id, status: 'approved' },
+              adminToken: token,
+            })
+            if (response.ok) {
+              approved.push(id)
+            } else {
+              failed++
+              console.error('Failed to approve submission:', id, await response.text())
+            }
+          } catch (error) {
+            failed++
+            console.error('Failed to approve submission:', id, error)
+          }
+        })
+      )
+    }
+
+    if (approved.length > 0) {
+      const approvedIds = new Set(approved)
+      setSubmissions((prev) =>
+        prev.map((sub) => (approvedIds.has(sub.id) ? { ...sub, status: 'approved' as const } : sub))
+      )
+      fetchAnalytics()
+    }
+
+    setBulkApproving(false)
+
+    if (failed === 0) {
+      setAlertMessage({
+        type: 'success',
+        message: `Approved ${approved.length} submission${approved.length === 1 ? '' : 's'} successfully`,
+      })
+    } else if (approved.length === 0) {
+      setAlertMessage({ type: 'error', message: `Failed to approve ${failed} submission${failed === 1 ? '' : 's'}` })
+    } else {
+      setAlertMessage({
+        type: 'warning',
+        message: `Approved ${approved.length}, but ${failed} failed. Try the remaining ones again.`,
+      })
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -1245,6 +1328,15 @@ export default function AdminPage() {
                 {status} ({submissions.filter((s) => status === 'all' || s.status === status).length})
               </button>
             ))}
+            {approvableSubmissions.length > 0 && (
+              <button
+                onClick={approveAll}
+                disabled={bulkApproving}
+                className="px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-full font-ubuntu font-bold transition-colors text-xs sm:text-sm lg:text-base bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] hover:bg-[#4FFFE3]/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bulkApproving ? 'Approving...' : `Approve All (${approvableSubmissions.length})`}
+              </button>
+            )}
           </div>
 
           {loading ? (
