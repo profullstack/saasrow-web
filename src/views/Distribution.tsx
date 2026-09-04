@@ -61,7 +61,8 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
             A listing on SaaSRow is not just a page on a website. It is published
             simultaneously as structured data for search engines, as a machine-readable
             document for AI assistants, and as a queryable endpoint for any app or agent
-            that wants it — with no API key and no paywall on any of those channels.
+            that wants it — with no API key and no paywall on any of those channels. And
+            you can create and manage your listing from the terminal or an AI agent, free.
           </p>
 
           <h2 className="text-white text-3xl font-bold font-ubuntu mb-6">
@@ -88,14 +89,29 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
             </Channel>
 
             <Channel title="Public API">
-              Any app can query the directory. Free, unauthenticated, CORS-enabled.
+              Any app can query the directory. Free, unauthenticated, CORS-enabled. With an
+              API key, the same API creates and edits your own listings.
               <Code>{`curl "${siteUrl}/api/v1/products?use_case=analytics&pricing_model=free"`}</Code>
             </Channel>
 
             <Channel title="MCP server">
               AI agents and dev tools reach the directory over the Model Context Protocol
-              — the same data as callable tools.
+              — the same data as callable tools. Add a key and the agent can list your
+              product for you.
               <Code>{`claude mcp add --transport http saasrow ${siteUrl}/api/mcp`}</Code>
+            </Channel>
+
+            <Channel title="Command line">
+              Sign in with an emailed code, then create, edit and delete listings and
+              manage API keys without leaving the terminal. Every command has{' '}
+              <span className="text-white">--json</span> for scripts and agents.
+              <Code>{`npx @profullstack/saasrow login\nsaasrow listings create --name "Acme" --website https://acme.example --description "…"`}</Code>
+            </Channel>
+
+            <Channel title="API keys, your way">
+              Create as many keys as you have machines and agents, name them, see when
+              each was last used, and revoke one without touching the others — from the
+              CLI, the API, or your listing management page.
             </Channel>
 
             <Channel title="Structured vocabulary">
@@ -176,6 +192,16 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
                   /api/mcp
                 </a>{' '}
                 — MCP server details
+              </li>
+              <li>
+                <a
+                  href="https://www.npmjs.com/package/@profullstack/saasrow"
+                  className="text-[#4fffe3] hover:underline"
+                >
+                  @profullstack/saasrow
+                </a>{' '}
+                — the CLI, with <span className="text-white">saasrow login</span> to get
+                your first API key
               </li>
               <li>
                 <a href="/llms-full.txt" className="text-[#4fffe3] hover:underline">

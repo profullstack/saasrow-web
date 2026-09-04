@@ -33,7 +33,7 @@ export interface ProductPage {
 }
 
 /** Columns we are willing to publish. Never `select('*')` on a public surface. */
-const PUBLIC_COLUMNS = [
+export const PUBLIC_COLUMNS = [
   'id',
   'title',
   'url',

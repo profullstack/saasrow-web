@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { BasicAnalytics } from '../components/BasicAnalytics'
 import { PremiumAnalytics } from '../components/PremiumAnalytics'
 import { ScreenshotGallery } from '../components/ScreenshotGallery'
+import { ApiKeysPanel } from '../components/ApiKeysPanel'
 import { callFn } from '@/lib/clientApi'
 
 interface SocialLink {
@@ -619,6 +620,8 @@ export default function ManageListings() {
               )}
             </div>
           )}
+
+          {token && <ApiKeysPanel managementToken={decodeURIComponent(token)} />}
 
           {showAddForm && (
             <div className="bg-[#2a2a2a] rounded-2xl border border-white/10 p-4 sm:p-6 lg:p-8 mb-6">

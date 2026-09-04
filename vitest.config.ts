@@ -20,6 +20,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // The CLI is a separate package with its own `node --test` suite.
+    exclude: ['**/node_modules/**', 'cli/**'],
     env: {
       NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,

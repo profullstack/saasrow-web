@@ -74,3 +74,32 @@ export async function forwardToEdge(name: string, req: Request): Promise<Respons
     headers: { 'Content-Type': res.headers.get('content-type') || 'application/json' },
   })
 }
+
+/**
+ * Call an edge function from server code with a JSON body (no incoming request
+ * to forward). Used where the Next side owns the logic but the email or
+ * notification plumbing lives in an edge function.
+ */
+export async function callEdgeFunction(
+  name: string,
+  body: unknown,
+): Promise<{ status: number; ok: boolean; json: unknown }> {
+  const { url, jwt } = edgeConfig()
+  const res = await fetch(`${url}/functions/v1/${name}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      apikey: jwt,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body ?? {}),
+  })
+  const text = await res.text()
+  let json: unknown = null
+  try {
+    json = text ? JSON.parse(text) : null
+  } catch {
+    json = { error: text }
+  }
+  return { status: res.status, ok: res.ok, json }
+}

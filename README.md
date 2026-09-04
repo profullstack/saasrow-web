@@ -54,6 +54,14 @@ npm run preview
 - `/submit` - Submit your software
 - `/community` - Community posts and discussions
 
+## Public API, MCP server and CLI
+
+The directory is readable without a key at `/api/v1` and over MCP at
+`/api/mcp`. With an account (an email address verified by a one-time code)
+you can create and manage free listings and API keys through the same API,
+the MCP write tools, or the CLI in `cli/` (`npx @profullstack/saasrow login`).
+See `docs/distribution.md` for the design and the deploy steps.
+
 ## Edge Functions
 
 The application uses Supabase Edge Functions for all API operations:
