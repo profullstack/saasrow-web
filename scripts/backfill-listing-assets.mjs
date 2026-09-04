@@ -62,6 +62,9 @@ const env = {
 const browser = await puppeteer.launch({
   headless: true,
   executablePath: findChrome(),
+  // A page that never finishes painting would otherwise hold a slot for the
+  // default 180 s before Page.captureScreenshot gives up.
+  protocolTimeout: 45_000,
   args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
 })
 
