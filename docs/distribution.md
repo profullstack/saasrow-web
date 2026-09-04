@@ -4,7 +4,8 @@ A listing on SaaSRow is published to five channels at once. This document
 describes each one, where its code lives, and how to verify it.
 
 The design goal is that everything a human can see, a machine can fetch —
-without an API key, a signup, or a paywall.
+without an API key, a signup, or a paywall. Writing (creating and managing
+your own listings) needs an account; see [Accounts and API keys](#accounts-and-api-keys).
 
 ## Channels
 
@@ -14,11 +15,84 @@ without an API key, a signup, or a paywall.
 | AI assistants | `/llms.txt`, `/llms-full.txt`, `/software/{id}/markdown` | `src/lib/markdownExport.ts` |
 | Public API | `/api/v1` | `app/api/v1/**`, `src/lib/distribution.ts` |
 | MCP server | `/api/mcp` | `src/lib/mcpServer.ts` |
+| CLI | `npx @profullstack/saasrow` | `cli/` |
 | Marketing page | `/distribution` | `src/views/Distribution.tsx` |
 
 All four data transports read through one query layer,
 `src/lib/distribution.ts`, so they cannot disagree about what an approved
-listing is or which columns are publishable.
+listing is or which columns are publishable. The write side goes through
+`src/lib/listings.ts` the same way: the REST routes, the MCP write tools and
+the CLI are three transports over one implementation.
+
+## Accounts and API keys
+
+There are no passwords. An account is an email address that has proved it can
+read its inbox, which is how the website's management links already work.
+The row is `users` (unique on email).
+
+An API key is `sr_` plus 40 characters from an unambiguous alphabet. Only its
+SHA-256 hash is stored (`api_keys.key_hash`); the first 11 characters are kept
+as `key_prefix` so a user can tell keys apart. The plaintext is returned once,
+at creation, and never again. Revoking sets `revoked_at` rather than deleting,
+so `last_used_at` history survives. `api_keys` and `cli_login_codes` have RLS
+on with no policies: only the service role, i.e. only server code that has
+already authenticated the caller, can touch them.
+
+Two credentials are accepted on every authenticated route
+(`src/lib/apiAuth.ts`):
+
+- `Authorization: Bearer sr_…` — an API key. CLI, MCP, scripts.
+- `X-Management-Token: …` — the token from a `/manage/{token}` link, so the
+  website's manage page can drive the same key endpoints. Resolves either a
+  `user_tokens.token` or a `software_submissions.management_token`; a legacy
+  listing with no `user_id` is adopted by its contact email's user on the way.
+
+### `saasrow login`
+
+1. `POST /api/v1/auth/cli {email}` → the Next route forwards to the
+   `cli-login` edge function, which generates an `XXXX-XXXX` code, stores
+   `sha256("email:CODE")` in `cli_login_codes` (15-minute expiry, five codes
+   per email per hour) and emails it via Resend. The edge function does this
+   because only edge functions hold `RESEND_API_KEY`.
+2. `POST /api/v1/auth/cli/verify {email, code, key_name}` → the Next route
+   checks the newest live code (five wrong guesses kill it), consumes it,
+   upserts `users`, creates a key and returns the plaintext once.
+
+The hashing rule is duplicated in `src/lib/apiKeys.ts` and
+`supabase/functions/cli-login/index.ts`; `__tests__/lib/apiKeys.test.ts`
+pins the vector.
+
+### Authenticated endpoints
+
+| Route | Methods | What |
+| --- | --- | --- |
+| `/api/v1/me` | GET | The account behind the credential |
+| `/api/v1/keys` | GET, POST | List keys (prefixes only); create one |
+| `/api/v1/keys/{id}` | PATCH, DELETE | Rename; revoke |
+| `/api/v1/listings` | GET, POST | Everything you own, any status; submit a free listing |
+| `/api/v1/listings/{id}` | GET, PATCH, DELETE | One of yours |
+
+A listing created here is byte-for-byte what the website's submit form
+produces: `status = pending`, `tier = free`, a fresh `management_token`, a
+`submission_contacts` row, and the `send-admin-notification` call. Input is
+validated by `src/lib/listingInput.ts` (pure, unit-tested); vocabulary terms
+outside the closed lists are dropped, not rejected, exactly as on the site.
+One account may hold at most 25 pending listings.
+
+The MCP server exposes the same operations as `create_listing`,
+`list_my_listings`, `get_my_listing`, `update_listing` and `delete_listing`.
+They appear in `tools/list` for everyone and return a tool error explaining
+how to connect with a key when called without one, so a client with a stale
+key keeps its read tools.
+
+### The CLI
+
+`cli/` is a separate zero-dependency package, `@profullstack/saasrow`, in the
+same shape as `@profullstack/timer` and `@profullstack/billing`: plain Node
+ESM, `node --test`, `bin/saasrow.mjs`. Credentials live in
+`~/.profullstack/saasrow/config.json` (0600) or `SAASROW_API_KEY`. It is
+excluded from the root vitest run and tested with `cd cli && npm test`.
+Publish from `cli/` with `npm publish --access public` once the API is live.
 
 ## Structured vocabulary
 

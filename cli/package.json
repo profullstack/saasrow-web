@@ -1,0 +1,23 @@
+{
+  "name": "@profullstack/saasrow",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Command-line client for saasrow.com: search the software directory, and create and manage your free listings and API keys from the terminal.",
+  "keywords": ["saasrow", "saas", "directory", "listing", "cli", "mcp", "agent"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/profullstack/saasrow-web.git",
+    "directory": "cli"
+  },
+  "homepage": "https://www.saasrow.com/distribution",
+  "bugs": { "url": "https://github.com/profullstack/saasrow-web/issues" },
+  "license": "MIT",
+  "author": "Profullstack, LLC",
+  "bin": { "saasrow": "bin/saasrow.mjs" },
+  "files": ["bin", "src", "README.md"],
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "test": "node --test",
+    "start": "node bin/saasrow.mjs"
+  }
+}

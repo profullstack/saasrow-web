@@ -15,9 +15,33 @@ vi.mock('@/lib/distribution', () => ({
   MAX_PAGE_SIZE: 100,
 }))
 
+// The owned-listing layer is server-only too. `ApiError` is real so the
+// handler's "caller's fault vs bug" split is exercised.
+const createListing = vi.fn()
+const listOwnedListings = vi.fn()
+const getOwnedListing = vi.fn()
+const updateOwnedListing = vi.fn()
+const deleteOwnedListing = vi.fn()
+
+vi.mock('@/lib/listings', () => ({
+  createListing: (...args: unknown[]) => createListing(...args),
+  listOwnedListings: (...args: unknown[]) => listOwnedListings(...args),
+  getOwnedListing: (...args: unknown[]) => getOwnedListing(...args),
+  updateOwnedListing: (...args: unknown[]) => updateOwnedListing(...args),
+  deleteOwnedListing: (...args: unknown[]) => deleteOwnedListing(...args),
+}))
+
 const { handleMcpMessage, TOOLS, DEFAULT_PROTOCOL_VERSION } = await import(
   '@/lib/mcpServer'
 )
+const { ApiError } = await import('@/lib/publicApi')
+
+const principal = {
+  userId: 'u1',
+  email: 'me@example.com',
+  keyId: 'k1',
+  via: 'api_key' as const,
+}
 
 function resultOf(response: unknown) {
   return (response as { result: Record<string, unknown> }).result
@@ -108,10 +132,15 @@ describe('tools/list', () => {
     const res = await handleMcpMessage({ id: 1, method: 'tools/list' })
     const tools = resultOf(res).tools as Array<{ name: string; inputSchema: unknown }>
     expect(tools.map((t) => t.name).sort()).toEqual([
+      'create_listing',
+      'delete_listing',
+      'get_my_listing',
       'get_product',
       'get_vocabulary',
       'list_categories',
+      'list_my_listings',
       'search_products',
+      'update_listing',
     ])
     for (const tool of tools) expect(tool.inputSchema).toBeTruthy()
   })
@@ -252,6 +281,84 @@ describe('tools/call error handling', () => {
     expect(resultOf(res).isError).toBe(true)
     // The underlying message is not leaked to the caller.
     expect(JSON.stringify(resultOf(res))).not.toContain('db exploded')
+  })
+})
+
+describe('write tools', () => {
+  it('refuses every write tool without a principal, and says how to get one', async () => {
+    for (const name of ['create_listing', 'list_my_listings', 'get_my_listing', 'update_listing', 'delete_listing']) {
+      const res = await handleMcpMessage({
+        id: 1,
+        method: 'tools/call',
+        params: { name, arguments: { id: 'x' } },
+      })
+      const result = resultOf(res) as { isError: boolean; content: Array<{ text: string }> }
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toContain('Authorization: Bearer')
+    }
+    expect(createListing).not.toHaveBeenCalled()
+    expect(deleteOwnedListing).not.toHaveBeenCalled()
+  })
+
+  it('read tools still work without a principal', async () => {
+    const res = await handleMcpMessage({
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'list_categories', arguments: {} },
+    })
+    expect(resultOf(res).isError).toBeUndefined()
+  })
+
+  it('create_listing passes the principal and the raw arguments through', async () => {
+    createListing.mockResolvedValue({ id: 'l1', name: 'Acme', status: 'pending' })
+    const args = { name: 'Acme', website: 'https://acme.example', description: 'd' }
+    const res = await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'create_listing', arguments: args } },
+      { principal },
+    )
+    expect(createListing).toHaveBeenCalledWith(principal, args)
+    expect(parseToolText(res)).toEqual({ id: 'l1', name: 'Acme', status: 'pending' })
+  })
+
+  it('update_listing splits the id from the patch', async () => {
+    updateOwnedListing.mockResolvedValue({ id: 'l1' })
+    await handleMcpMessage(
+      {
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'update_listing', arguments: { id: 'l1', description: 'new' } },
+      },
+      { principal },
+    )
+    expect(updateOwnedListing).toHaveBeenCalledWith(principal, 'l1', { description: 'new' })
+  })
+
+  it('delete_listing reports what it deleted', async () => {
+    deleteOwnedListing.mockResolvedValue(undefined)
+    const res = await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'delete_listing', arguments: { id: 'l1' } } },
+      { principal },
+    )
+    expect(deleteOwnedListing).toHaveBeenCalledWith(principal, 'l1')
+    expect(parseToolText(res)).toEqual({ deleted: true, id: 'l1' })
+  })
+
+  it('surfaces an ApiError message as a tool error without logging it as a bug', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    createListing.mockRejectedValue(new ApiError(409, 'This website is already listed: "Acme" (approved)'))
+    const res = await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'create_listing', arguments: {} } },
+      { principal },
+    )
+    const result = resultOf(res) as { isError: boolean; content: Array<{ text: string }> }
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('already listed')
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('mentions the connected account in initialize instructions', async () => {
+    const res = await handleMcpMessage({ id: 1, method: 'initialize' }, { principal })
+    expect(resultOf(res).instructions).toContain('me@example.com')
   })
 })
 
