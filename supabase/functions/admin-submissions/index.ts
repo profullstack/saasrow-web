@@ -83,25 +83,25 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      if (status === 'approved' && data && (data.tier === 'featured' || data.tier === 'premium')) {
-        try {
-          const screenshotUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/capture-screenshots`
-          await fetch(screenshotUrl, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              submissionId: data.id,
-              url: data.url,
-              tier: data.tier,
-            }),
-          })
-          console.log(`Triggered screenshot capture for submission ${data.id}`)
-        } catch (screenshotError) {
-          console.error('Error triggering screenshot capture:', screenshotError)
-        }
+      // Every approved listing, whatever its tier, gets its logo, image and
+      // screenshots filled in. This runs after the response is sent so a
+      // slow screenshot provider never slows down (or fails) the approval;
+      // the pg_cron sweep retries anything that does not complete.
+      if (status === 'approved' && data) {
+        const run = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/complete-listing`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ submissionId: data.id }),
+        })
+          .then((res) => console.log(`complete-listing for ${data.id}: ${res.status}`))
+          .catch((err) => console.error('Error triggering complete-listing:', err))
+        // deno-lint-ignore no-explicit-any
+        const runtime = (globalThis as any).EdgeRuntime
+        if (runtime?.waitUntil) runtime.waitUntil(run)
+        else await run
       }
 
       return new Response(

@@ -406,7 +406,7 @@ export default function AdminPage() {
     if (failed === 0) {
       setAlertMessage({
         type: 'success',
-        message: `Approved ${approved.length} submission${approved.length === 1 ? '' : 's'} successfully`,
+        message: `Approved ${approved.length} submission${approved.length === 1 ? '' : 's'}. Logos, images and screenshots are being generated in the background.`,
       })
     } else if (approved.length === 0) {
       setAlertMessage({ type: 'error', message: `Failed to approve ${failed} submission${failed === 1 ? '' : 's'}` })
