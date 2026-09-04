@@ -116,6 +116,37 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
           </div>
         </section>
 
+        <section className="w-full max-w-[1280px] mx-auto px-4 pb-4">
+          <Link
+            href="/developers"
+            className="group block bg-[#2a2a2a] border border-[#4FFFE3]/40 hover:border-[#4FFFE3] rounded-3xl p-6 md:p-8 transition-colors"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+              <div className="flex-1">
+                <p className="text-[#E0FF04] font-ubuntu font-bold uppercase tracking-wide text-xs mb-2">
+                  New · CLI, API and MCP server
+                </p>
+                <h2 className="font-ubuntu font-bold text-2xl md:text-3xl text-white mb-2">
+                  List your software from the terminal, or let your AI agent do it.
+                </h2>
+                <p className="font-ubuntu text-white/70 text-base md:text-lg">
+                  Sign in with an emailed code, get an API key, and create and manage free listings
+                  with the <span className="text-white">saasrow</span> CLI, the REST API, or any
+                  MCP client like Claude Code. Reading the directory needs no key at all.
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 lg:items-end">
+                <code className="block bg-neutral-900 text-[#4FFFE3] font-mono text-sm md:text-base rounded-xl px-5 py-3 whitespace-nowrap">
+                  npx @profullstack/saasrow login
+                </code>
+                <span className="font-ubuntu font-bold text-[#4FFFE3] group-hover:underline text-right">
+                  Developer docs →
+                </span>
+              </div>
+            </div>
+          </Link>
+        </section>
+
         <SearchSection
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

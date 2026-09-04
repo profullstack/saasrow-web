@@ -82,6 +82,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     { id: 'categories', label: 'Categories', href: '/categories' },
     { id: 'tags', label: 'Tags', href: '/tags' },
     { id: 'blog', label: 'Blog', href: '/blog' },
+    { id: 'developers', label: 'Developers', href: '/developers' },
   ]
 
   return (

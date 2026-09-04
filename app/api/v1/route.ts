@@ -41,6 +41,7 @@ export function GET() {
         read: 'none',
         write: AUTH_DESCRIPTION,
       },
+      docs: `${base}/developers`,
       cli: {
         package: '@profullstack/saasrow',
         install: 'npm install -g @profullstack/saasrow',

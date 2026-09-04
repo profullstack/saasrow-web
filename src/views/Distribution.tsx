@@ -166,7 +166,11 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
             </h2>
             <p className="text-white/70 font-ubuntu mb-4">
               The whole surface is self-describing — start at the API index and follow the
-              links.
+              links, or read the{' '}
+              <a href="/developers" className="text-[#4fffe3] hover:underline">
+                developer docs
+              </a>{' '}
+              for the CLI, MCP and REST write API.
             </p>
             <ul className="text-white/80 font-ubuntu space-y-2">
               <li>
