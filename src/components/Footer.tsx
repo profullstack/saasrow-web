@@ -14,6 +14,8 @@ export function Footer() {
     { label: 'Discover', href: '/discover' },
     { label: 'Blog', href: '/blog' },
     { label: 'News', href: '/news' },
+    { label: 'Developers', href: '/developers' },
+    { label: 'Distribution', href: '/distribution' },
   ]
 
   const footerLinks = [
