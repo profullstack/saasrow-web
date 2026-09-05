@@ -10,9 +10,13 @@ title = "saasrow-web"
 useDefault = true
 
 [allowlist]
-description = "Public client-side analytics keys shipped in page HTML (not secrets)"
+description = "Public client-side analytics keys shipped in page HTML (not secrets), and high-entropy string literals that are alphabets, not keys"
 regexTarget = "line"
 regexes = [
   '''data-key="jrCaJNA5B0FqNBQqJOAaYw"''',
   '''data-website-id="dfid_ymwgZYB7fCWFQQX3c74DG"''',
+  # src/lib/apiKeys.ts: the character set API keys are generated from. It is
+  # in git history from the first commit of the file, so an inline
+  # gitleaks:allow alone would not clear the history scan.
+  '''const (KEY|CODE)_ALPHABET = '[A-Za-z0-9]{20,}''',
 ]
