@@ -13,7 +13,7 @@ export const API_KEY_SECRET_LENGTH = 40
 export const API_KEY_DISPLAY_LENGTH = API_KEY_PREFIX.length + 8
 export const API_KEY_NAME_MAX = 80
 
-const KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+const KEY_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789' // gitleaks:allow (a character set, not a secret)
 // Login codes are typed by hand, so they are upper-case only.
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
