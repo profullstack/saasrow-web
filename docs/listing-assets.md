@@ -18,9 +18,14 @@ nothing.
 - Nothing ever backfilled a logo or og:image after submission: 52 approved
   listings had no logo and 131 had no image.
 - Unrelated but visible in the same logs: the OpenAI key has no credits, so
-  `fetch-metadata` falls back to the raw page `<title>` and meta description
-  instead of the AI-written title/description/category/tags. That is a
-  billing fix, not a code fix.
+  `fetch-metadata` fell back to the raw page `<title>` and meta description
+  instead of the AI-written title/description/category/tags. Since
+  2026-09-05 `generateWithAI` tries OpenAI, then Gemini 2.5 Flash
+  (`GEMINI_API_KEY`, the account-level key from the shared vault), then page
+  metadata, so submissions get model-written copy again without OpenAI
+  credits. Add credits at
+  https://platform.openai.com/settings/organization/billing/overview and
+  OpenAI takes over again automatically.
 
 ## How it works now
 

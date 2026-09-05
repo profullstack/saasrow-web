@@ -1,6 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { OpenAI } from 'npm:openai@4.47.1'
-import puppeteer from 'https://deno.land/x/puppeteer@16.2.0/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,33 +136,21 @@ async function fetchUrlMetadata(url: string): Promise<MetaData> {
   }
 }
 
-async function generateWithAI(url: string, metadata: MetaData): Promise<{ title: string; description: string; category: string; tags: string[] }> {
-  console.log('[AI] Starting AI generation for URL:', url)
-  const apiKey = Deno.env.get('OPENAI_API_KEY')
+interface AiListing {
+  title: string
+  description: string
+  category: string
+  tags: string[]
+}
 
-  if (!apiKey) {
-    console.warn('[AI] OPENAI_API_KEY not configured, falling back to metadata only')
-    return {
-      title: metadata.title || 'Unknown Software',
-      description: metadata.description || 'No description available',
-      category: 'Software',
-      tags: [],
-    }
-  }
-
-  console.log('[AI] OpenAI API key found, initializing client')
-
-  const openai = new OpenAI({
-    apiKey,
-  })
-
+function buildPrompt(url: string, metadata: MetaData): string {
   const existingInfo = `
 URL: ${url}
 ${metadata.title ? `Existing Title: ${metadata.title}` : ''}
 ${metadata.description ? `Existing Description: ${metadata.description}` : ''}
 `.trim()
 
-  const prompt = `You are analyzing a website for a software directory. Based on the following information:
+  return `You are analyzing a website for a software directory. Based on the following information:
 
 ${existingInfo}
 
@@ -175,47 +162,90 @@ Generate:
 
 Return ONLY a JSON object with keys: title, description, category, tags (array of strings)
 No markdown, no code blocks, just the raw JSON.`
+}
 
-  try {
-    console.log('[AI] Sending request to OpenAI...')
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7,
-    })
+/** Models like to wrap JSON in a code fence no matter what the prompt says. */
+function parseAiJson(raw: string, metadata: MetaData): AiListing {
+  let content = raw.trim()
+  if (content.startsWith('```json')) {
+    content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '')
+  } else if (content.startsWith('```')) {
+    content = content.replace(/^```\s*/, '').replace(/\s*```$/, '')
+  }
+  const parsed = JSON.parse(content.trim())
+  return {
+    title: parsed.title || metadata.title || 'Unknown Software',
+    description: parsed.description || metadata.description || 'No description available',
+    category: parsed.category || 'Software',
+    tags: Array.isArray(parsed.tags) ? parsed.tags : [],
+  }
+}
 
-    console.log('[AI] Received response from OpenAI')
-    let content = completion.choices[0]?.message?.content || '{}'
-    console.log('[AI] Raw AI response:', content.substring(0, 200))
-    content = content.trim()
+async function askOpenAI(prompt: string, apiKey: string): Promise<string> {
+  const openai = new OpenAI({ apiKey })
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{ role: 'user', content: prompt }],
+    temperature: 0.7,
+  })
+  return completion.choices[0]?.message?.content || '{}'
+}
 
-    if (content.startsWith('```json')) {
-      content = content.replace(/^```json\s*/, '').replace(/\s*```$/, '')
-    } else if (content.startsWith('```')) {
-      content = content.replace(/^```\s*/, '').replace(/\s*```$/, '')
+async function askGemini(prompt: string, apiKey: string): Promise<string> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    },
+  )
+  if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  const json = await res.json()
+  const text = json?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('')
+  if (!text) throw new Error('Gemini returned no text')
+  return text
+}
+
+/**
+ * Title, description, category and tags from a model. Providers are tried
+ * in order and the first one that answers wins: OpenAI when it has credits,
+ * otherwise Gemini. A provider with no key is skipped; if all fail we fall
+ * back to the page's own title and meta description rather than blocking
+ * the submission.
+ */
+async function generateWithAI(url: string, metadata: MetaData): Promise<AiListing> {
+  console.log('[AI] Starting AI generation for URL:', url)
+  const prompt = buildPrompt(url, metadata)
+  const providers: Array<[string, () => Promise<string>]> = []
+  const openaiKey = Deno.env.get('OPENAI_API_KEY')
+  const geminiKey = Deno.env.get('GEMINI_API_KEY')
+  if (openaiKey) providers.push(['openai', () => askOpenAI(prompt, openaiKey)])
+  if (geminiKey) providers.push(['gemini', () => askGemini(prompt, geminiKey)])
+  if (providers.length === 0) console.warn('[AI] No OPENAI_API_KEY or GEMINI_API_KEY configured, falling back to metadata only')
+
+  for (const [name, ask] of providers) {
+    try {
+      console.log(`[AI] Asking ${name}...`)
+      const raw = await ask()
+      console.log(`[AI] ${name} raw response:`, raw.substring(0, 200))
+      const result = parseAiJson(raw, metadata)
+      console.log(`[AI] Final data from ${name}:`, result)
+      return result
+    } catch (error) {
+      console.error(`[AI] ${name} failed:`, error instanceof Error ? error.message : String(error))
     }
+  }
 
-    const parsed = JSON.parse(content.trim())
-    console.log('[AI] Parsed AI response:', parsed)
-
-    const result = {
-      title: parsed.title || metadata.title || 'Unknown Software',
-      description: parsed.description || metadata.description || 'No description available',
-      category: parsed.category || 'Software',
-      tags: Array.isArray(parsed.tags) ? parsed.tags : [],
-    }
-    console.log('[AI] Final AI-generated data:', result)
-
-    return result
-  } catch (error) {
-    console.error('[AI] AI generation error:', error)
-    console.error('[AI] Error details:', error instanceof Error ? error.message : String(error))
-    return {
-      title: metadata.title || 'Unknown Software',
-      description: metadata.description || 'No description available',
-      category: 'Software',
-      tags: [],
-    }
+  return {
+    title: metadata.title || 'Unknown Software',
+    description: metadata.description || 'No description available',
+    category: 'Software',
+    tags: [],
   }
 }
 
