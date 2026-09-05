@@ -24,6 +24,8 @@ function attr(tag: string, name: string): string | null {
 }
 
 function absolute(href: string, base: string): string | null {
+  // Inline icons are common on small sites; fetch() understands data: URLs.
+  if (/^data:image\//i.test(href)) return href
   try {
     const u = new URL(href, base)
     return u.protocol === 'http:' || u.protocol === 'https:' ? u.toString() : null
@@ -173,6 +175,120 @@ export const IMAGE_CONTENT_TYPES: Record<string, string> = {
 
 export function storageFileName(kind: string): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}.${kind}`
+}
+
+// ---------------------------------------------------------------------------
+// Logo discovery
+
+export interface LogoResult extends Fetched {
+  kind: string
+  source: string
+}
+
+/**
+ * Where to look for a logo, in order: what the page declared, the usual
+ * well-known paths (relative to the page's own directory first, for sites
+ * hosted under a subpath), then two favicon services that keep their own
+ * caches and often have an icon for a site that blocks us.
+ */
+export function logoCandidates(declared: string | null, pageUrl: string): Array<{ url: string; source: string }> {
+  const out: Array<{ url: string; source: string }> = []
+  const seen = new Set<string>()
+  const push = (url: string | null, source: string) => {
+    if (url && !seen.has(url)) {
+      seen.add(url)
+      out.push({ url, source })
+    }
+  }
+  push(declared, 'page')
+  let origin = ''
+  let host = ''
+  let dir = ''
+  try {
+    const u = new URL(pageUrl)
+    origin = u.origin
+    host = u.hostname
+    dir = u.pathname.endsWith('/') ? u.pathname : u.pathname.replace(/\/[^/]*$/, '/')
+  } catch {
+    return out
+  }
+  if (dir && dir !== '/') {
+    push(`${origin}${dir}favicon.ico`, 'subpath')
+    push(`${origin}${dir}favicon.png`, 'subpath')
+  }
+  for (const p of ['/favicon.ico', '/favicon.png', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png', '/favicon.svg', '/icon.png', '/logo.png']) {
+    push(`${origin}${p}`, 'well-known')
+  }
+  push(`https://icons.duckduckgo.com/ip3/${host}.ico`, 'duckduckgo')
+  push(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`, 'google')
+  return out
+}
+
+let googlePlaceholder: Promise<string | null> | null = null
+
+/** Google answers every domain; for an unknown one it sends a generic globe we must not store as a logo. */
+async function googlePlaceholderHash(fetchFn: typeof fetch): Promise<string | null> {
+  if (!googlePlaceholder) {
+    googlePlaceholder = (async () => {
+      const got = await fetchBytes('https://www.google.com/s2/favicons?domain=no-such-site-3f9a1c.invalid&sz=128', { fetchFn })
+      return got ? await sha256Hex(got.bytes) : null
+    })()
+  }
+  return googlePlaceholder
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes as BufferSource)
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+const MONOGRAM_COLORS = ['#4FFFE3', '#E0FF04', '#FF7A59', '#A78BFA', '#60A5FA', '#F472B6', '#34D399', '#FBBF24']
+
+/**
+ * The last resort when a site has no icon anywhere: a monogram of the
+ * product's first letter on a colour picked from its domain, as SVG. It is
+ * obviously a placeholder, which is the point: a maker who wants their real
+ * logo uploads one from the management page and this gets replaced.
+ */
+export function monogramLogo(title: string | null, pageUrl: string): { bytes: Uint8Array; kind: 'svg' } {
+  let host = pageUrl
+  try {
+    host = new URL(pageUrl).hostname.replace(/^www\./, '')
+  } catch {
+    // keep the raw string
+  }
+  const letter = (title ?? host).trim().replace(/^[^\p{L}\p{N}]+/u, '').slice(0, 1).toUpperCase() || host.slice(0, 1).toUpperCase() || '?'
+  let hash = 0
+  for (const ch of host) hash = (hash * 31 + ch.codePointAt(0)!) >>> 0
+  const color = MONOGRAM_COLORS[hash % MONOGRAM_COLORS.length]
+  const escaped = letter.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">` +
+    `<rect width="256" height="256" rx="48" fill="${color}"/>` +
+    `<text x="50%" y="54%" dominant-baseline="middle" text-anchor="middle" ` +
+    `font-family="Ubuntu, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="700" font-size="150" fill="#171717">${escaped}</text>` +
+    `</svg>`
+  return { bytes: new TextEncoder().encode(svg), kind: 'svg' }
+}
+
+/** Try each candidate until one yields a real image. Tiny (<100 byte) files are tracking pixels, not logos. */
+export async function findLogo(
+  declared: string | null,
+  pageUrl: string,
+  fetchFn: typeof fetch = fetch,
+  log: (m: string) => void = () => {},
+): Promise<LogoResult | null> {
+  for (const { url, source } of logoCandidates(declared, pageUrl)) {
+    const got = await fetchBytes(url, { fetchFn, timeoutMs: 10_000 })
+    const kind = got ? imageKind(got.bytes, got.contentType) : null
+    if (!got || !kind || got.bytes.length < 100) continue
+    if (source === 'google' && (await sha256Hex(got.bytes)) === (await googlePlaceholderHash(fetchFn))) {
+      log(`google favicon service has no icon for ${pageUrl}`)
+      continue
+    }
+    return { ...got, kind, source }
+  }
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -356,16 +472,15 @@ export async function completeListingAssets(db: Db, row: ListingRow, opts: Compl
       ? extractAssetUrls(html, row.url, maxNavPages)
       : { favicon: absolute('/favicon.ico', row.url), ogImage: null, navLinks: [] }
 
-    if (needLogo && assets.favicon) {
-      const got = await fetchBytes(assets.favicon, { fetchFn })
-      const kind = got ? imageKind(got.bytes, got.contentType) : null
-      if (got && kind) {
-        const name = storageFileName(kind)
-        if (await uploadImage(db, 'software-logos', got.bytes, IMAGE_CONTENT_TYPES[kind], name)) {
-          updates.logo = name
-          result.logo = 'added'
-        } else notes.push('logo upload failed')
-      } else notes.push(`no usable favicon at ${assets.favicon}`)
+    if (needLogo) {
+      const found = await findLogo(assets.favicon, row.url, fetchFn, log)
+      const logo = found ?? { ...monogramLogo(row.title, row.url), source: 'monogram' }
+      const name = storageFileName(logo.kind)
+      if (await uploadImage(db, 'software-logos', logo.bytes, IMAGE_CONTENT_TYPES[logo.kind], name)) {
+        updates.logo = name
+        result.logo = 'added'
+        notes.push(`logo from ${logo.source}`)
+      } else notes.push('logo upload failed')
     }
 
     if (needImage && assets.ogImage) {

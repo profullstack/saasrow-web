@@ -28,8 +28,18 @@ One implementation, `supabase/functions/_shared/listingAssets.ts`, with no
 runtime-specific imports so it runs in Deno and in Node:
 
 - `extractAssetUrls(html, url)` — best favicon (largest PNG/SVG or
-  apple-touch-icon, else `/favicon.ico`), `og:image` (or `twitter:image`),
-  and same-origin top navigation links.
+  apple-touch-icon, `data:` icons included, else `/favicon.ico`), `og:image`
+  (or `twitter:image`), and same-origin top navigation links.
+- `findLogo(declared, url)` — a ladder: the declared icon, well-known paths
+  (the page's own directory first, for sites under a subpath, then
+  `/favicon.ico`, `/favicon.png`, `/apple-touch-icon.png`, …), the
+  DuckDuckGo icon service, then Google's favicon service with its generic
+  "unknown site" placeholder detected by hash and rejected.
+- `monogramLogo(title, url)` — the last resort: an SVG with the product's
+  first letter on a colour hashed from the domain. Obviously a placeholder;
+  a maker replaces it by uploading a logo on the management page. After the
+  2026-09-05 run every approved listing has a logo (6 of the 15 stragglers
+  came from the ladder, 9 are monograms).
 - `captureScreenshot(url, env)` — a provider chain: ScreenshotOne if
   `SCREENSHOT_API_KEY` is set, Rasterwise if `GETSCREENSHOT_API_KEY` is set,
   then the keyless public Microlink and thum.io services. Every result is
@@ -96,9 +106,19 @@ select * from cron.job_run_details order by start_time desc limit 5;
 
 ## Deploying
 
-As with every edge function here, merging deploys nothing. `complete-listing`,
-`admin-submissions` and `capture-screenshots` were deployed via the Supabase
-MCP on 2026-09-04 with the `_shared/listingAssets.ts` file passed alongside
-(entrypoint `<name>/index.ts`). Migrations `add_assets_checked_at` and
-`schedule_complete_listing_sweep` are applied. Redeploy all three whenever
-the shared file changes.
+As with every edge function here, merging deploys nothing. The dev box's
+Supabase CLI is logged in (token `saasrow-cli`, since 2026-09-05), so deploy
+from the repo root and the shared import resolves on its own:
+
+```bash
+supabase functions deploy complete-listing   --project-ref yfkuksfqyddufusonyuf --no-verify-jwt
+supabase functions deploy capture-screenshots --project-ref yfkuksfqyddufusonyuf --no-verify-jwt
+supabase functions deploy admin-submissions  --project-ref yfkuksfqyddufusonyuf --no-verify-jwt
+```
+
+Redeploy `complete-listing` and `capture-screenshots` whenever
+`_shared/listingAssets.ts` changes (`admin-submissions` does not import it).
+Migrations `add_assets_checked_at` and `schedule_complete_listing_sweep` are
+applied. `GETSCREENSHOT_API_KEY` in the edge secrets is the renewed Rasterwise
+key (2026-09-05); the same value is in Doppler `saasrow/prd` and the logicsrc
+vaults `saasrow-web--prod` and `profullstack-sharable-keys--prod`.

@@ -170,7 +170,10 @@ describe('completeListingAssets', () => {
       screenshot: async () => ({ bytes: PNG, contentType: 'image/png', provider: 'test' }),
     })
     expect(result.image).toBe('from-screenshot')
-    expect(result.logo).toBe('none')
+    // No icon anywhere → a generated monogram, never an empty logo.
+    expect(result.logo).toBe('added')
+    expect(result.notes).toContain('logo from monogram')
+    expect(uploads.find((u) => u.bucket === 'software-logos')?.contentType).toBe('image/svg+xml')
     expect(uploads.filter((u) => u.bucket === 'software-images')).toHaveLength(1)
   })
 
@@ -191,6 +194,72 @@ describe('completeListingAssets', () => {
     expect(result.screenshots).toBe(0)
     expect(result.notes).toContain('page did not return HTML')
     expect(updates[0].assets_checked_at).toBeTruthy()
+  })
+})
+
+describe('logo discovery', () => {
+  it('orders candidates: declared, subpath, well-known, then the favicon services', async () => {
+    const { logoCandidates } = await import('../../supabase/functions/_shared/listingAssets')
+    const c = logoCandidates('https://x.github.io/app/icon.png', 'https://x.github.io/app/')
+    expect(c[0]).toEqual({ url: 'https://x.github.io/app/icon.png', source: 'page' })
+    expect(c[1]).toEqual({ url: 'https://x.github.io/app/favicon.ico', source: 'subpath' })
+    expect(c.find((x) => x.source === 'well-known')?.url).toBe('https://x.github.io/favicon.ico')
+    expect(c.at(-2)).toEqual({ url: 'https://icons.duckduckgo.com/ip3/x.github.io.ico', source: 'duckduckgo' })
+    expect(c.at(-1)?.source).toBe('google')
+    expect(new Set(c.map((x) => x.url)).size).toBe(c.length)
+  })
+
+  it('keeps a data: URI icon as a candidate', () => {
+    const a = extractAssetUrls('<link rel="icon" href="data:image/png;base64,iVBORw0KGgo=">', 'https://d.example/')
+    expect(a.favicon).toMatch(/^data:image\/png/)
+  })
+
+  it('falls through failed candidates and rejects the Google placeholder', async () => {
+    const { findLogo } = await import('../../supabase/functions/_shared/listingAssets')
+    const placeholder = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...new Array(200).fill(7)])
+    const tried: string[] = []
+    const fetchFn = (async (input: string | URL | Request) => {
+      const u = String(input)
+      tried.push(u)
+      if (u.startsWith('https://www.google.com/s2/favicons')) return new Response(placeholder, { headers: { 'content-type': 'image/png' } })
+      return new Response('', { status: 404 })
+    }) as unknown as typeof fetch
+    const none = await findLogo('https://n.example/favicon.ico', 'https://n.example/', fetchFn)
+    expect(none).toBeNull()
+    expect(tried.some((u) => u.includes('duckduckgo'))).toBe(true)
+
+    const real = (async (input: string | URL | Request) => {
+      const u = String(input)
+      if (u.includes('duckduckgo')) return new Response(PNG, { headers: { 'content-type': 'image/x-icon' } })
+      return new Response('', { status: 404 })
+    }) as unknown as typeof fetch
+    const found = await findLogo(null, 'https://r.example/', real)
+    expect(found?.source).toBe('duckduckgo')
+    expect(found?.kind).toBe('png')
+  })
+})
+
+describe('monogramLogo', () => {
+  it('uses the first letter of the title on a colour fixed by the domain', async () => {
+    const { monogramLogo } = await import('../../supabase/functions/_shared/listingAssets')
+    const a = monogramLogo('acme analytics', 'https://www.acme.example/app')
+    const svg = new TextDecoder().decode(a.bytes)
+    expect(a.kind).toBe('svg')
+    expect(svg).toContain('>A</text>')
+    expect(svg).toMatch(/fill="#[0-9A-F]{6}"/)
+    // Same domain, same colour; different domain, usually different.
+    const b = monogramLogo('Other', 'https://acme.example/')
+    expect(svg.match(/rect[^>]*fill="(#[0-9A-F]{6})"/)?.[1]).toBe(new TextDecoder().decode(b.bytes).match(/rect[^>]*fill="(#[0-9A-F]{6})"/)?.[1])
+  })
+
+  it('skips leading punctuation, falls back to the host, and escapes', async () => {
+    const { monogramLogo } = await import('../../supabase/functions/_shared/listingAssets')
+    expect(new TextDecoder().decode(monogramLogo('— dash first', 'https://z.example/').bytes)).toContain('>D</text>')
+    expect(new TextDecoder().decode(monogramLogo('', 'https://zeta.example/').bytes)).toContain('>Z</text>')
+    // Markup-looking punctuation is stripped rather than escaped into the SVG.
+    expect(new TextDecoder().decode(monogramLogo('<b>', 'https://q.example/').bytes)).toContain('>B</text>')
+    expect(new TextDecoder().decode(monogramLogo('<b>', 'https://q.example/').bytes)).not.toContain('<b>')
+    expect(new TextDecoder().decode(monogramLogo('미니게임', 'https://k.example/').bytes)).toContain('>미</text>')
   })
 })
 
