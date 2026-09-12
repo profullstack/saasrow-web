@@ -1,0 +1,29 @@
+{
+  "openmcp": "0.1",
+  "mcp": "https://saasrow.com/api/mcp",
+  "name": "saasrow",
+  "description": "A directory of SaaS products, searchable by what they do.",
+  "url": "https://saasrow.com",
+  "auth": {
+    "kind": "none"
+  },
+  "tags": [
+    "directory",
+    "saas"
+  ],
+  "operator": "https://logicsrc.com/.well-known/openprofile.md",
+  "tools": [
+    "search_products",
+    "get_product",
+    "list_categories",
+    "get_vocabulary",
+    "create_listing",
+    "list_my_listings",
+    "get_my_listing",
+    "update_listing",
+    "delete_listing"
+  ],
+  "catalogs": [
+    "https://openmcp.logicsrc.com"
+  ]
+}
