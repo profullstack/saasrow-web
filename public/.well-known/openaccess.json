@@ -1,0 +1,29 @@
+{
+  "openaccess": "0.1",
+  "name": "saasrow",
+  "url": "https://saasrow.com",
+  "operator": "https://logicsrc.com/.well-known/openprofile.md",
+  "redirect_uris": [
+    "https://saasrow.com/api/v1/openaccess/callback"
+  ],
+  "jwks": {
+    "keys": [
+      {
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "kid": "k4tbXcSI6v2H",
+        "x": "INU3-k_EPe6bd4ppT52O2hlpXdCrDn_IL4GLyzkWX40",
+        "alg": "EdDSA",
+        "use": "sig"
+      }
+    ]
+  },
+  "scopes": {},
+  "honours": [
+    "profullstack.com/all-access"
+  ],
+  "webhooks": "https://saasrow.com/api/v1/openaccess/events",
+  "hubs": [
+    "https://openaccess.logicsrc.com"
+  ]
+}
