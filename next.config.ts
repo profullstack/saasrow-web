@@ -11,6 +11,11 @@ const supabaseHost = (() => {
 })()
 
 const config: NextConfig = {
+  // The image runs the standalone server under Bun (`bun server.js`).
+  output: 'standalone',
+  // Trace from this directory, never a lockfile further up the disk, so
+  // server.js always lands at the top of .next/standalone.
+  outputFileTracingRoot: new URL('.', import.meta.url).pathname,
   reactStrictMode: true,
   images: {
     remotePatterns: supabaseHost
