@@ -4,13 +4,15 @@
   "name": "anima-project",
   "description": "A Next.js project using Supabase",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "bun --bun next dev",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start",
     "lint": "next lint",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test": "bun --bun vitest run",
+    "test:ui": "bun --bun vitest --ui",
+    "test:coverage": "bun --bun vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "bun --bun vitest run --exclude '__tests__/api/community.test.ts' --exclude '__tests__/api/newsletter.test.ts' --exclude '__tests__/api/submissions.test.ts'"
   },
   "dependencies": {
     "@netlify/plugin-nextjs": "^5.15.10",
@@ -51,5 +53,6 @@
     "tailwindcss": "^3.4.16",
     "typescript": "^5.9.3",
     "vitest": "^4.0.1"
-  }
+  },
+  "packageManager": "bun@1.4.0"
 }
