@@ -10,8 +10,17 @@ import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
+// Premium is sold three ways, all priced inline at checkout (no Stripe Price IDs).
+type PremiumTerm = 'monthly' | 'yearly' | 'lifetime'
+const PREMIUM_TERMS: Record<PremiumTerm, { label: string; cents: number; suffix: string; note: string }> = {
+  monthly: { label: 'Monthly', cents: 500, suffix: '/month', note: 'Cancel any time' },
+  yearly: { label: 'Yearly', cents: 2000, suffix: '/year', note: 'Billed once a year' },
+  lifetime: { label: 'Lifetime', cents: 19900, suffix: ' one-time', note: 'Pay once, Premium forever' },
+}
+
 export default function FeaturedPage() {
   const [billingPeriod, setBillingPeriod] = useState<'yearly' | 'monthly'>('yearly')
+  const [premiumTerm, setPremiumTerm] = useState<PremiumTerm>('yearly')
   const [showDiscountPopup, setShowDiscountPopup] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [processingPlan, setProcessingPlan] = useState<string | null>(null)
@@ -97,15 +106,16 @@ export default function FeaturedPage() {
       name: 'Premium',
       description: 'For established brands',
       monthlyPrice: 5,
-      yearlyPrice: 5,
+      yearlyPrice: 20,
       monthlyPriceId: null,
       yearlyPriceId: null,
-      // One-time payment instead of a recurring subscription (priced inline).
-      oneTime: true,
-      oneTimePrice: 5,
+      // Monthly, yearly or lifetime: see PREMIUM_TERMS.
+      oneTime: false,
+      oneTimePrice: 199,
       features: [
-        '✅ One-time payment - no recurring fees',
-        '✅ No expiration - Permanent listings',
+        '✅ $5/month, $20/year or $199 lifetime',
+        '✅ Unlimited submissions: no daily cap, no review-queue cap',
+        'Bulk listing through the API and CLI',
         'Dofollow backlink',
         'Unlimited software listings',
         'Homepage featured spot',
@@ -126,11 +136,11 @@ export default function FeaturedPage() {
     },
     {
       question: 'How does pricing work?',
-      answer: 'Featured ($2) and Premium ($5) are one-time payments — pay once and your listing stays live forever. No subscriptions, no recurring fees.',
+      answer: 'Featured is a one-time $2. Premium is $5/month, $20/year or $199 once for lifetime access, and lifts every submission limit.',
     },
     {
       question: 'Are there any recurring charges?',
-      answer: 'No. Paid plans are a single one-time fee, so there is nothing to cancel and you are never billed again. Your listing is permanent.',
+      answer: 'Featured and Premium Lifetime are single payments with nothing to cancel. Premium Monthly and Yearly renew until you cancel.',
     },
     {
       question: 'Can I upgrade later?',
@@ -214,7 +224,8 @@ export default function FeaturedPage() {
 
     try {
       const tier = pendingPlan.name.toLowerCase()
-      const isOneTime = pendingPlan.oneTime
+      const premium = tier === 'premium' ? PREMIUM_TERMS[premiumTerm] : null
+      const isOneTime = pendingPlan.oneTime || premiumTerm === 'lifetime' && !!premium
       // One-time plans are priced inline (amount in cents) so no pre-created
       // Stripe Price is needed; subscriptions still use their Price ID.
       const priceId = isOneTime
@@ -237,8 +248,9 @@ export default function FeaturedPage() {
         method: 'POST',
         body: {
           price_id: priceId,
-          amount: isOneTime ? Math.round(pendingPlan.oneTimePrice * 100) : undefined,
-          product_name: isOneTime ? `SaaSRow ${pendingPlan.name} Listing` : undefined,
+          amount: premium ? premium.cents : isOneTime ? Math.round(pendingPlan.oneTimePrice * 100) : undefined,
+          interval: premium && premiumTerm !== 'lifetime' ? (premiumTerm === 'monthly' ? 'month' : 'year') : undefined,
+          product_name: premium ? `SaaSRow Premium (${premium.label})` : isOneTime ? `SaaSRow ${pendingPlan.name} Listing` : undefined,
           success_url: successUrl,
           cancel_url: cancelUrl,
           mode: isOneTime ? 'payment' : 'subscription',
@@ -256,7 +268,7 @@ export default function FeaturedPage() {
         trackEvent(analyticsEvents.LISTING_UPGRADE_COMPLETED, {
           plan: pendingPlan.name,
           email: email,
-          billing_period: billingPeriod,
+          billing_period: tier === 'premium' ? premiumTerm : billingPeriod,
           has_discount: !!pendingDiscount,
         });
         window.location.href = data.url
@@ -329,7 +341,7 @@ export default function FeaturedPage() {
           </p>
 
           <p className="text-[#4FFFE3] text-lg font-ubuntu font-bold mb-8">
-            Simple one-time pricing — pay once, listed forever.
+            Featured is a one-time $2. Premium lifts every limit from $5/month.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6 mb-16">
@@ -347,19 +359,44 @@ export default function FeaturedPage() {
                 )}
                 <h3 className="text-white text-3xl font-bold font-ubuntu mb-2">{plan.name}</h3>
                 <p className="text-white/70 mb-6 font-ubuntu">{plan.description}</p>
+                {plan.name === 'Premium' ? (
+                  <>
+                    <div className="flex gap-1 mb-4 bg-neutral-800 rounded-full p-1" role="group" aria-label="Premium billing">
+                      {(Object.keys(PREMIUM_TERMS) as PremiumTerm[]).map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => setPremiumTerm(term)}
+                          aria-pressed={premiumTerm === term}
+                          className={`flex-1 py-1 rounded-full text-sm font-ubuntu ${premiumTerm === term ? 'bg-[#4FFFE3] text-neutral-800 font-bold' : 'text-white/70'}`}
+                        >
+                          {PREMIUM_TERMS[term].label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mb-2">
+                      <span className="text-white text-5xl font-bold font-ubuntu">
+                        ${PREMIUM_TERMS[premiumTerm].cents / 100}
+                      </span>
+                      <span className="text-white/70 font-ubuntu">{PREMIUM_TERMS[premiumTerm].suffix}</span>
+                    </div>
+                    <p className="text-[#4FFFE3] text-sm font-ubuntu mb-4">{PREMIUM_TERMS[premiumTerm].note}</p>
+                  </>
+                ) : (
                 <div className="mb-2">
                   <span className="text-white text-5xl font-bold font-ubuntu">
                     {getDisplayPrice(plan)}
                   </span>
                   <span className="text-white/70 font-ubuntu">{plan.oneTime ? ' one-time' : '/month'}</span>
                 </div>
+                )}
                 {plan.oneTime && (
                   <p className="text-[#4FFFE3] text-sm font-ubuntu mb-4">Pay once, listed forever</p>
                 )}
-                {!plan.oneTime && billingPeriod === 'yearly' && getSavings(plan) && (
+                {!plan.oneTime && plan.name !== 'Premium' && billingPeriod === 'yearly' && getSavings(plan) && (
                   <p className="text-[#4FFFE3] text-sm font-ubuntu mb-4">{getSavings(plan)}</p>
                 )}
-                {!plan.oneTime && billingPeriod === 'yearly' && plan.yearlyPrice > 0 && (
+                {!plan.oneTime && plan.name !== 'Premium' && billingPeriod === 'yearly' && plan.yearlyPrice > 0 && (
                   <p className="text-white/50 text-sm font-ubuntu mb-4">
                     Billed ${plan.yearlyPrice.toFixed(2)} annually
                   </p>

@@ -220,8 +220,11 @@ async function syncCustomerFromStripe(customerId: string) {
     }
 
     if (customerEmail) {
-      let tier = 'featured';
-      if (priceId.toLowerCase().includes('premium')) {
+      // Checkout stamps the tier on the subscription's metadata. Price IDs are
+      // opaque (`price_...`), so the old name test only ever found 'featured'.
+      const metaTier = String(subscription.metadata?.tier ?? '').toLowerCase();
+      let tier = metaTier === 'premium' || metaTier === 'featured' ? metaTier : 'featured';
+      if (!metaTier && priceId.toLowerCase().includes('premium')) {
         tier = 'premium';
       }
 
