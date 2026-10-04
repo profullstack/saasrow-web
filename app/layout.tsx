@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import { ReferralProvider } from '@profullstack/referrals/react';
-import { FeedbackWidget } from '@profullstack/stack/feedback';
 import Script from 'next/script'
 import JsonLd from '@/components/JsonLd'
 import { websiteLd, organizationLd } from '@/lib/structuredData'
@@ -63,7 +62,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           defer
         />
               <Script data-site="f2463c61-25b8-47af-bf2a-096563b37bf5" src="https://crawlproof.com/stats.js" strategy="afterInteractive" />
-      <FeedbackWidget property="saasrow.com" />
       {/* CrawlProof ad loader: scans for [data-cp-ad] slots (rendered by <AdUnit />) and fills them in place. */}
       <Script src="https://crawlproof.com/ad.js" strategy="afterInteractive" />
       </body>
