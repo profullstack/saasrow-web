@@ -29,7 +29,7 @@ interface FetchedData {
 // behind with a stale shape.
 // Shown when the daily per-address submission cap (src/lib/crawl-gateway.ts) answers 402.
 const SUBMIT_LIMIT_MESSAGE =
-  "You've reached today's free submission limit from this network. Please try again tomorrow, or contact support@saasrow.com."
+  "You've reached today's free submission limit from this network. Try again tomorrow, or go Premium ($5/month, $20/year or $199 lifetime) at saasrow.com/featured for unlimited submissions."
 
 const EMPTY_FORM = {
   title: '',

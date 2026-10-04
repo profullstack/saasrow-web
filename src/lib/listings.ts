@@ -44,6 +44,20 @@ export function serializeOwnedListing(row: OwnedRow) {
  * only carry the submitter's email in `submission_contacts`. Adopt those the
  * first time their owner shows up, so the CLI lists everything they made.
  */
+/**
+ * Premium (monthly, yearly or lifetime) lifts the review-queue cap: it is what
+ * a bulk lister buys instead of being throttled. The tier lives on
+ * `user_tokens`, keyed by the same email as the API account.
+ */
+export async function isPremium(email: string | null | undefined): Promise<boolean> {
+  if (!email) return false
+  const { data } = await getSupabaseAdmin()
+    .from('user_tokens')
+    .select('tier')
+    .in('email', [...new Set([email, email.toLowerCase()])])
+  return (data ?? []).some((row) => row.tier === 'premium')
+}
+
 export async function claimLegacyListings(principal: ApiPrincipal): Promise<void> {
   const supabase = getSupabaseAdmin()
   const { data: contacts } = await supabase
@@ -118,8 +132,8 @@ export async function createListing(principal: ApiPrincipal, input: unknown) {
     .select('id', { count: 'exact', head: true })
     .eq('user_id', principal.userId)
     .eq('status', 'pending')
-  if ((count ?? 0) >= MAX_PENDING_LISTINGS) {
-    throw new ApiError(429, `You already have ${MAX_PENDING_LISTINGS} listings awaiting review.`)
+  if ((count ?? 0) >= MAX_PENDING_LISTINGS && !(await isPremium(principal.email))) {
+    throw new ApiError(429, `You already have ${MAX_PENDING_LISTINGS} listings awaiting review. Premium ($5/month, $20/year or $199 lifetime, saasrow.com/featured) lifts this limit.`)
   }
 
   await assertUrlFree(fields.url)

@@ -1,5 +1,6 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import Stripe from 'npm:stripe@17.7.0';
+import { resolveTierPrice } from '../_shared/tierPrices.ts';
 
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
 const stripe = new Stripe(stripeSecret, {
@@ -39,7 +40,13 @@ Deno.serve(async (req) => {
       return corsResponse({ error: 'Method not allowed' }, 405);
     }
 
-    const { price_id, amount, product_name, success_url, cancel_url, mode, tier, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
+    const { price_id, amount: clientAmount, interval, product_name, success_url, cancel_url, mode, tier, discount_code, customer_email, datafast_visitor_id, datafast_session_id } = await req.json();
+
+    // The server decides what a tier costs; the browser's amount is only
+    // honoured for a tier with no listed price.
+    const priced = resolveTierPrice(tier, interval, mode, clientAmount);
+    if (!priced.ok) return corsResponse({ error: priced.error }, 400);
+    const { amount, recurring } = priced;
 
     const error = validateParameters(
       { success_url, cancel_url, mode },
@@ -63,8 +70,8 @@ Deno.serve(async (req) => {
     if (!hasInlineAmount && typeof price_id !== 'string') {
       return corsResponse({ error: 'Either amount (cents) or price_id is required' }, 400);
     }
-    if (hasInlineAmount && mode !== 'payment') {
-      return corsResponse({ error: 'Inline amount is only supported for one-time payments (mode: payment)' }, 400);
+    if (hasInlineAmount && mode !== 'payment' && !recurring) {
+      return corsResponse({ error: 'An inline subscription needs interval: month | year' }, 400);
     }
 
     const lineItem = hasInlineAmount
@@ -73,6 +80,7 @@ Deno.serve(async (req) => {
             currency: 'usd',
             unit_amount: amount,
             product_data: { name: product_name || 'SaaSRow listing' },
+            ...(recurring && mode === 'subscription' ? { recurring: { interval: recurring } } : {}),
           },
           quantity: 1,
         }
@@ -95,6 +103,11 @@ Deno.serve(async (req) => {
     // checkouts so the webhook knows which tier to grant.
     if (tier) {
       sessionParams.metadata.tier = tier;
+      // Subscription events carry the subscription's metadata, not the
+      // session's, so the webhook can read the tier straight off it.
+      if (mode === 'subscription') {
+        sessionParams.subscription_data = { metadata: { tier } };
+      }
     }
 
     if (datafast_visitor_id) {
