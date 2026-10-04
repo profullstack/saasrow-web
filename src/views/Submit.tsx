@@ -27,6 +27,10 @@ interface FetchedData {
 
 // One definition of an empty form, so adding a field can't leave a reset path
 // behind with a stale shape.
+// Shown when the daily per-address submission cap (src/lib/crawl-gateway.ts) answers 402.
+const SUBMIT_LIMIT_MESSAGE =
+  "You've reached today's free submission limit from this network. Please try again tomorrow, or contact support@saasrow.com."
+
 const EMPTY_FORM = {
   title: '',
   url: '',
@@ -279,6 +283,8 @@ export default function SubmitPage() {
         } else {
           setMessage({ type: 'success', text: 'Software submitted successfully!' })
         }
+      } else if (response.status === 402) {
+        setMessage({ type: 'error', text: SUBMIT_LIMIT_MESSAGE })
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to submit' })
       }
@@ -370,6 +376,7 @@ export default function SubmitPage() {
       }
 
       let successCount = 0
+      let limited = false
 
       for (const submission of submissions) {
         try {
@@ -389,6 +396,9 @@ export default function SubmitPage() {
 
           if (response.ok) {
             successCount++
+          } else if (response.status === 402) {
+            limited = true
+            break
           }
         } catch (error) {
           console.error('Error submitting', submission.url, error)
@@ -436,7 +446,7 @@ export default function SubmitPage() {
           email: emailInput,
           tier: userTier,
         });
-        setMessage({ type: 'error', text: 'Failed to submit any entries' })
+        setMessage({ type: 'error', text: limited ? SUBMIT_LIMIT_MESSAGE : 'Failed to submit any entries' })
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Something went wrong. Please try again.' })
