@@ -165,6 +165,12 @@ export function Footer() {
             ))}
           </nav>
         </div>
+
+        <nav className="webring flex items-center justify-center gap-4 text-white/75 font-ubuntu text-xs sm:text-sm" aria-label="Profullstack webring">
+          <a href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fsaasrow.com%2F" rel="prev" className="hover:underline hover:text-white transition-colors">{"<<"}</a>
+          <a href="https://rssamplifier.com/ring/profullstack" className="hover:underline hover:text-white transition-colors">Profullstack</a>
+          <a href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fsaasrow.com%2F" rel="next" className="hover:underline hover:text-white transition-colors">{">>"}</a>
+        </nav>
       </div>
     </footer>
   )
