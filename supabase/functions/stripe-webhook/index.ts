@@ -1,6 +1,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
+import { listingIdsForEmail } from '../_shared/managementAccess.ts';
 
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY')!;
 const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET')!;
@@ -248,13 +249,12 @@ async function syncCustomerFromStripe(customerId: string) {
             console.error('Error creating user token:', tokenError);
           } else if (newToken) {
             console.info(`Created user token for ${customerEmail} with tier: ${tier}`);
-            const managementUrl = `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/manage/${newToken.token}`;
-            console.log('Management URL:', managementUrl);
+            await sendManagementLink(customerEmail);
 
             const { error: upgradeError } = await supabase
               .from('software_submissions')
               .update({ tier })
-              .eq('email', customerEmail);
+              .in('id', await listingIdsForEmail(supabase, customerEmail));
 
             if (upgradeError) {
               console.error(`Error upgrading submissions for ${customerEmail}:`, upgradeError);
@@ -317,7 +317,7 @@ async function syncCustomerFromStripe(customerId: string) {
               const { error: upgradeError } = await supabase
                 .from('software_submissions')
                 .update({ tier })
-                .eq('email', customerEmail);
+                .in('id', await listingIdsForEmail(supabase, customerEmail));
 
               if (upgradeError) {
                 console.error(`Error upgrading submissions for ${customerEmail}:`, upgradeError);
@@ -360,7 +360,7 @@ async function syncCustomerFromStripe(customerId: string) {
             social_media_mentions: false,
             category_logo_enabled: false
           })
-          .eq('email', customerEmail);
+          .in('id', await listingIdsForEmail(supabase, customerEmail));
 
         if (revertError) {
           console.error(`Error reverting submissions to free tier for ${customerEmail}:`, revertError);
@@ -385,6 +385,25 @@ async function syncCustomerFromStripe(customerId: string) {
   } catch (error) {
     console.error(`Failed to sync subscription for customer ${customerId}:`, error);
     throw error;
+  }
+}
+
+// A new paying customer has no other way into their dashboard: before this
+// the link was only written to the function log.
+async function sendManagementLink(email: string) {
+  try {
+    const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-management-link`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) console.error(`Management link for ${email} failed: ${res.status} ${await res.text()}`);
+    else console.info(`Management link emailed to ${email}`);
+  } catch (err) {
+    console.error(`Error emailing management link to ${email}:`, err);
   }
 }
 
@@ -414,8 +433,7 @@ async function grantOneTimeTier(email: string, tier: string) {
 
     if (newToken) {
       console.info(`Created user token for ${email} with one-time tier: ${tier}`);
-      const managementUrl = `${Deno.env.get('SITE_URL') || 'http://localhost:5173'}/manage/${newToken.token}`;
-      console.log('Management URL:', managementUrl);
+      await sendManagementLink(email);
     }
   } else {
     const oldTier = existingToken.tier;
@@ -441,7 +459,7 @@ async function grantOneTimeTier(email: string, tier: string) {
   const { error: upgradeError } = await supabase
     .from('software_submissions')
     .update({ tier })
-    .eq('email', email);
+    .in('id', await listingIdsForEmail(supabase, email));
 
   if (upgradeError) {
     console.error(`Error upgrading submissions for ${email}:`, upgradeError);
