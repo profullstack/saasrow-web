@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { managementUrlFor, normalizeEmail, resolveManagementAccess } from '../_shared/managementAccess.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,9 +21,9 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { email } = await req.json()
+    const { email: rawEmail } = await req.json()
 
-    if (!email) {
+    if (!rawEmail) {
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
         {
@@ -32,8 +33,8 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
-    if (!emailRegex.test(email)) {
+    const email = normalizeEmail(rawEmail)
+    if (!email) {
       return new Response(
         JSON.stringify({ error: 'Invalid email format' }),
         {
@@ -43,44 +44,13 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // First, ensure user exists in users table
-    let { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('email', email)
-      .maybeSingle()
+    // Listings submitted on the website are matched by their contact email and
+    // adopted; subscribers get their user token even with no listings yet.
+    const access = await resolveManagementAccess(supabase, email)
 
-    if (userError && userError.code !== 'PGRST116') {
-      throw userError
-    }
-
-    // If user doesn't exist, create one
-    if (!user) {
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert({ email })
-        .select('id, email')
-        .single()
-
-      if (createError) {
-        throw createError
-      }
-
-      user = newUser
-    }
-
-    // Now get submissions for this user
-    const { data: submissions, error } = await supabase
-      .from('software_submissions')
-      .select('management_token, user_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (error || !submissions) {
+    if (access.kind === 'none') {
       return new Response(
-        JSON.stringify({ error: 'No submissions found for this email address' }),
+        JSON.stringify({ error: 'No listings or subscription found for this email address' }),
         {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -89,7 +59,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173'
-    const managementUrl = `${siteUrl}/manage/${encodeURIComponent(submissions.management_token)}`
+    const managementUrl = managementUrlFor(siteUrl, access.token)
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -270,6 +240,7 @@ SaaSRow - The World's Best Place to Find Software
 This is an automated email. You're receiving this because you submitted software to our directory.
     `
 
+    let sent = false
     try {
       const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
@@ -293,6 +264,7 @@ This is an automated email. You're receiving this because you submitted software
           console.error('Resend API error:', await resendResponse.text())
         } else {
           console.log('Email sent successfully via Resend to:', email)
+          sent = true
         }
       } else {
         console.log('RESEND_API_KEY not configured')
@@ -301,6 +273,18 @@ This is an automated email. You're receiving this because you submitted software
       }
     } catch (emailErr) {
       console.error('Error sending email:', emailErr)
+    }
+
+    // Saying "check your inbox" when nothing was sent leaves people waiting
+    // for a link that will never come.
+    if (!sent) {
+      return new Response(
+        JSON.stringify({ error: 'We could not send the email just now. Please try again in a few minutes.' }),
+        {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
     }
 
     return new Response(
@@ -315,7 +299,7 @@ This is an automated email. You're receiving this because you submitted software
     )
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
