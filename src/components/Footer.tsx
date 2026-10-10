@@ -170,6 +170,7 @@ export function Footer() {
           <a href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fsaasrow.com%2F" rel="prev" className="hover:underline hover:text-white transition-colors">{"<<"}</a>
           <a href="https://rssamplifier.com/ring/profullstack" className="hover:underline hover:text-white transition-colors">Profullstack</a>
           <a href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fsaasrow.com%2F" rel="next" className="hover:underline hover:text-white transition-colors">{">>"}</a>
+          <a href="https://rssamplifier.com/ring/profullstack/random?from=https%3A%2F%2Fsaasrow.com%2F" title="Random site" aria-label="Random site" className="hover:underline hover:text-white transition-colors">{"⚄"}</a>
         </nav>
       </div>
     </footer>
