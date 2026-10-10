@@ -3,8 +3,10 @@
 import { useState, FormEvent, ChangeEvent } from 'react'
 import Link from 'next/link'
 import { callFn } from '@/lib/clientApi'
+import { useFooterBottom } from './FooterBottom'
 
 export function Footer() {
+  const bottom = useFooterBottom()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -16,12 +18,6 @@ export function Footer() {
     { label: 'News', href: '/news' },
     { label: 'Developers', href: '/developers' },
     { label: 'Distribution', href: '/distribution' },
-  ]
-
-  const footerLinks = [
-    { label: 'Terms of Service', href: '/terms' },
-    { label: 'Privacy Policy', href: '/privacy' },
-    { label: 'Unsubscribe', href: '/unsubscribe' },
   ]
 
   const handleSubscribe = async (e: FormEvent) => {
@@ -148,30 +144,12 @@ export function Footer() {
           </a>
         </div>
 
-        <hr className="border-white/20" />
+        <Link href="/" className="flex justify-center">
+          <img className="h-8 sm:h-10 w-auto" alt="SaaSRow logo" src="/wiresniff-logo-1-1.png" />
+        </Link>
 
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white/75 font-ubuntu text-xs sm:text-sm">
-          <p className="text-center md:text-left">© 2025 <a href="https://profullstack.com" target="_blank" rel="noopener noreferrer" className="hover:underline hover:text-white transition-colors">Profullstack, Inc.</a> All rights reserved.</p>
-
-          <Link href="/" className="order-first md:order-none">
-            <img className="h-8 sm:h-10 w-auto" alt="SaaSRow logo" src="/wiresniff-logo-1-1.png" />
-          </Link>
-
-          <nav className="flex gap-4 sm:gap-8 flex-wrap justify-center">
-            {footerLinks.map((link) => (
-              <Link key={link.label} href={link.href} className="hover:underline">
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-
-        <nav className="webring flex items-center justify-center gap-4 text-white/75 font-ubuntu text-xs sm:text-sm" aria-label="Profullstack webring">
-          <a href="https://rssamplifier.com/ring/profullstack/previous?from=https%3A%2F%2Fsaasrow.com%2F" rel="prev" className="hover:underline hover:text-white transition-colors">{"<<"}</a>
-          <a href="https://rssamplifier.com/ring/profullstack" className="hover:underline hover:text-white transition-colors">Profullstack</a>
-          <a href="https://rssamplifier.com/ring/profullstack/next?from=https%3A%2F%2Fsaasrow.com%2F" rel="next" className="hover:underline hover:text-white transition-colors">{">>"}</a>
-          <a href="https://rssamplifier.com/ring/profullstack/random?from=https%3A%2F%2Fsaasrow.com%2F" title="Random site" aria-label="Random site" className="hover:underline hover:text-white transition-colors">{"⚄"}</a>
-        </nav>
+        {/* Copyright, links and the Profullstack webring: @profullstack/footer (see FooterBottom) */}
+        <div className="text-white font-ubuntu">{bottom}</div>
       </div>
     </footer>
   )
