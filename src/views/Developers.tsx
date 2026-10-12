@@ -129,9 +129,9 @@ saasrow listings list`}</Code>
           <Section
             id="cli"
             title="CLI"
-            lead="A zero-dependency Node command, published as @profullstack/saasrow. Install it globally or run it with npx."
+            lead="A zero-dependency Node command, published as @profullstack/saasrow. Install it with one line (bun, or npm on Node 20.11+, no sudo), globally with npm, or run it with npx."
           >
-            <Code>{`npm install -g @profullstack/saasrow
+            <Code>{`curl -fsSL ${siteUrl}/install.sh | sh   # or: npm install -g @profullstack/saasrow
 
 saasrow login                      # emailed code → API key stored locally
 saasrow whoami
