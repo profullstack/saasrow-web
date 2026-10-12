@@ -78,6 +78,7 @@ export function llmsTxt(opts: {
     `- [Controlled vocabulary](${base}/api/v1/vocabulary): the exact terms those filters accept.`,
     `- [Categories](${base}/api/v1/categories): every category with product counts.`,
     `- [MCP server](${base}/api/mcp): the same directory as callable Model Context Protocol tools.`,
+    `- [CLI](${base}/install.sh): \`curl -fsSL ${base}/install.sh | sh\` installs \`saasrow\` (npm: @profullstack/saasrow) to search, and to manage listings and API keys.`,
     `- [Full directory as markdown](${base}/llms-full.txt): every listing in one file.`,
     `- [Directory stats](${base}/api/v1/stats): usage numbers, with the counting method stated.`,
     '',

@@ -59,7 +59,13 @@ npm run preview
 The directory is readable without a key at `/api/v1` and over MCP at
 `/api/mcp`. With an account (an email address verified by a one-time code)
 you can create and manage free listings and API keys through the same API,
-the MCP write tools, or the CLI in `cli/` (`npx @profullstack/saasrow login`).
+the MCP write tools, or the CLI in `cli/`:
+
+```bash
+curl -fsSL https://saasrow.com/install.sh | sh   # or: npm install -g @profullstack/saasrow
+saasrow login
+```
+
 See `docs/distribution.md` for the design and the deploy steps.
 
 ## Edge Functions

@@ -105,7 +105,7 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
               Sign in with an emailed code, then create, edit and delete listings and
               manage API keys without leaving the terminal. Every command has{' '}
               <span className="text-white">--json</span> for scripts and agents.
-              <Code>{`npx @profullstack/saasrow login\nsaasrow listings create --name "Acme" --website https://acme.example --description "…"`}</Code>
+              <Code>{`curl -fsSL ${siteUrl}/install.sh | sh\nsaasrow login\nsaasrow listings create --name "Acme" --website https://acme.example --description "…"`}</Code>
             </Channel>
 
             <Channel title="API keys, your way">
