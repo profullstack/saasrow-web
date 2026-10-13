@@ -11,7 +11,7 @@ import {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, PUT, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Token',
 }
 
 Deno.serve(async (req: Request) => {
@@ -125,12 +125,66 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      const client = includeAll
-        ? createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      // all=true is the admin view: every listing in every status, with the owner's
+      // email. It must be admin-only, and it must not be capped — a fixed limit made
+      // the admin counts drift as new submissions pushed older rows out of the window.
+      if (includeAll) {
+        const adminToken = req.headers.get('X-Admin-Token')
+        const { data: validToken } = adminToken
+          ? await supabase
+              .from('admin_tokens')
+              .select('email')
+              .eq('token', adminToken)
+              .gt('expires_at', new Date().toISOString())
+              .maybeSingle()
+          : { data: null }
+
+        if (!validToken) {
+          return new Response(
+            JSON.stringify({ error: 'Admin token required' }),
+            {
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            }
           )
-        : supabase
+        }
+
+        // PostgREST caps a response at db-max-rows (1000), so page through.
+        const pageSize = 1000
+        const rows: any[] = []
+        for (let from = 0; ; from += pageSize) {
+          const { data: page, error } = await supabase
+            .from('software_submissions')
+            .select(`
+              *,
+              submission_contacts(email)
+            `)
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: true })
+            .range(from, from + pageSize - 1)
+
+          if (error) {
+            return new Response(
+              JSON.stringify({ error: error.message }),
+              {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              }
+            )
+          }
+
+          rows.push(...(page || []))
+          if (!page || page.length < pageSize) break
+        }
+
+        return new Response(
+          JSON.stringify({ data: rows }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
 
       const publicFields = `
         id,
@@ -162,20 +216,12 @@ Deno.serve(async (req: Request) => {
         last_share_reset
       `
 
-      let query = client
+      const { data, error } = await supabase
         .from('software_submissions')
-        .select(includeAll ? `
-          *,
-          submission_contacts!inner(email)
-        ` : publicFields)
+        .select(publicFields)
+        .eq('status', 'approved')
         .order('created_at', { ascending: false })
         .limit(50)
-
-      if (!includeAll) {
-        query = query.eq('status', 'approved')
-      }
-
-      const { data, error } = await query
 
       if (error) {
         return new Response(
@@ -187,7 +233,7 @@ Deno.serve(async (req: Request) => {
         )
       }
 
-      if (!includeAll && data) {
+      if (data) {
         const submissionIds = data.map((s: any) => s.id)
         const { data: commentCounts } = await supabase
           .from('comments')

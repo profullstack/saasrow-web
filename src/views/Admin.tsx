@@ -241,7 +241,8 @@ export default function AdminPage() {
 
   const fetchSubmissions = async () => {
     try {
-      const response = await callFn('submissions', { query: { all: true } })
+      const token = sessionStorage.getItem('adminToken') || undefined
+      const response = await callFn('submissions', { query: { all: true }, adminToken: token })
 
       if (response.ok) {
         const result = await response.json()
