@@ -961,10 +961,10 @@ export default function AdminPage() {
     try {
       const response = await callFn('send-newsletter', {
         method: 'POST',
+        adminToken: sessionStorage.getItem('adminToken') ?? '',
         body: {
           subject: subject,
           content: content,
-          adminEmail: adminEmail
         },
       })
 
