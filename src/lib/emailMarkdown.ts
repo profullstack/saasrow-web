@@ -303,3 +303,58 @@ export function markdownToPlainText(input: string): string {
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }
+
+export interface EmailFooterLine {
+  text: string
+  /** Optional link: an anchor in HTML, "text: url" in text/plain. */
+  href?: string
+}
+
+export interface EmailPartsInput {
+  /** Markdown (or plain text) body. */
+  markdown: string
+  /** Banner title at the top of the HTML version, e.g. "SaaSRow". */
+  heading: string
+  footer: EmailFooterLine[]
+}
+
+/**
+ * Both halves of a multipart/alternative email from one markdown source: a full
+ * inline-styled HTML document and a text/plain body carrying the same footer, so a
+ * client that shows the text part still gets the links (unsubscribe included).
+ */
+export function buildEmailParts({ markdown, heading, footer }: EmailPartsInput): { html: string; text: string } {
+  const footerHtml = footer
+    .map((line) => {
+      const href = line.href ? safeUrl(line.href) : null
+      const body = href
+        ? `<a href="${escapeHtml(href)}" style="color:#0a7f6f;text-decoration:none;">${escapeHtml(line.text)}</a>`
+        : escapeHtml(line.text)
+      return `<p style="margin:0 0 6px;">${body}</p>`
+    })
+    .join('\n    ')
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family:'Ubuntu',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;color:#333333;max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#4FFFE3;background:linear-gradient(to bottom,#E0FF04,#4FFFE3);padding:30px;text-align:center;border-radius:10px;margin-bottom:30px;">
+    <h1 style="margin:0;color:#000000;font-size:28px;">${escapeHtml(heading)}</h1>
+  </div>
+  <div style="background:#f9f9f9;padding:30px;border-radius:10px;margin-bottom:20px;">
+    ${markdownToEmailHtml(markdown)}
+  </div>
+  <div style="text-align:center;color:#666666;font-size:12px;padding:20px;border-top:1px solid #dddddd;">
+    ${footerHtml}
+  </div>
+</body>
+</html>`
+
+  const footerText = footer.map((line) => (line.href ? `${line.text}: ${line.href}` : line.text)).join('\n')
+  const text = `${markdownToPlainText(markdown)}\n\n--\n${footerText}\n`
+
+  return { html, text }
+}

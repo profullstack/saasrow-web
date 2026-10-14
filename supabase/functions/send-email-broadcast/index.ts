@@ -1,17 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
-import { markdownToEmailHtml, markdownToPlainText } from '../_shared/emailMarkdown.ts'
+import { buildEmailParts } from '../_shared/emailMarkdown.ts'
 import { sendableEmails } from '../_shared/emailRecipients.ts'
+import { requireAdmin } from '../_shared/adminAuth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Token',
 }
 
 interface BroadcastRequest {
   subject: string
   content: string
-  adminEmail: string
   audience: 'newsletter' | 'users' | 'all'
 }
 
@@ -28,11 +28,20 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const { subject, content, adminEmail, audience = 'all' }: BroadcastRequest = await req.json()
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    if (!subject || !content || !adminEmail) {
+    const admin = await requireAdmin(req, supabase, corsHeaders)
+    if (admin instanceof Response) return admin
+    const adminEmail = admin.email
+
+    const { subject, content, audience = 'all' }: BroadcastRequest = await req.json()
+
+    if (!subject || !content) {
       return new Response(
-        JSON.stringify({ error: 'subject, content, and adminEmail are required' }),
+        JSON.stringify({ error: 'subject and content are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -47,11 +56,6 @@ Deno.serve(async (req: Request) => {
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
 
     const emailSet = new Set<string>()
 
@@ -95,37 +99,18 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // The body is authored as markdown (plain text renders fine too) and converted to
-    // escaped, inline-styled HTML — pasted markup is never injected into the email.
-    const bodyHtml = markdownToEmailHtml(content)
-    const textContent = markdownToPlainText(content)
-
-    const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(to bottom, #E0FF04, #4FFFE3); padding: 30px; text-align: center; border-radius: 10px; margin-bottom: 30px; }
-    .header h1 { margin: 0; color: #000; font-size: 28px; }
-    .content { background: #f9f9f9; padding: 30px; border-radius: 10px; margin-bottom: 20px; }
-    .footer { text-align: center; color: #666; font-size: 12px; padding: 20px; border-top: 1px solid #ddd; }
-    .footer a { color: #4FFFE3; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="header"><h1>SaaSRow</h1></div>
-  <div class="content">
-    ${bodyHtml}
-  </div>
-  <div class="footer">
-    <p>You're receiving this email because you have an account on SaaSRow.</p>
-    <p><a href="${siteUrl}">Visit SaaSRow</a></p>
-    <p>© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.</p>
-  </div>
-</body>
-</html>`
+    // The body is authored as markdown (plain text renders fine too) and goes out as
+    // multipart/alternative: escaped, inline-styled HTML plus a text/plain part with the
+    // same footer. Pasted markup is never injected into the email.
+    const { html: htmlContent, text: textContent } = buildEmailParts({
+      markdown: content,
+      heading: 'SaaSRow',
+      footer: [
+        { text: "You're receiving this email because you have an account on SaaSRow." },
+        { text: 'Visit SaaSRow', href: siteUrl },
+        { text: `© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.` },
+      ],
+    })
 
     // Resend's batch endpoint sends individual emails (one per recipient, max 100 per call)
     const BATCH_SIZE = 100

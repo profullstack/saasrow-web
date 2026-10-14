@@ -1,15 +1,16 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { buildEmailParts } from '../_shared/emailMarkdown.ts'
+import { requireAdmin } from '../_shared/adminAuth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Token',
 }
 
 interface NewsletterRequest {
   subject: string
   content: string
-  adminEmail: string
 }
 
 Deno.serve(async (req: Request) => {
@@ -31,11 +32,20 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const { subject, content, adminEmail }: NewsletterRequest = await req.json()
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    if (!subject || !content || !adminEmail) {
+    const admin = await requireAdmin(req, supabase, corsHeaders)
+    if (admin instanceof Response) return admin
+    const adminEmail = admin.email
+
+    const { subject, content }: NewsletterRequest = await req.json()
+
+    if (!subject || !content) {
       return new Response(
-        JSON.stringify({ error: 'Subject, content, and adminEmail are required' }),
+        JSON.stringify({ error: 'Subject and content are required' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -58,11 +68,6 @@ Deno.serve(async (req: Request) => {
         }
       )
     }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
 
     const { data: subscribers, error: dbError } = await supabase
       .from('newsletter_subscriptions')
@@ -91,77 +96,19 @@ Deno.serve(async (req: Request) => {
 
     const emailList = subscribers.map(s => s.email)
 
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(to bottom, #E0FF04, #4FFFE3);
-      padding: 30px;
-      text-align: center;
-      border-radius: 10px;
-      margin-bottom: 30px;
-    }
-    .header h1 {
-      margin: 0;
-      color: #000;
-      font-size: 28px;
-    }
-    .content {
-      background: #f9f9f9;
-      padding: 30px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-    }
-    .content p {
-      margin-bottom: 15px;
-      white-space: pre-wrap;
-    }
-    .footer {
-      text-align: center;
-      color: #666;
-      font-size: 12px;
-      padding: 20px;
-      border-top: 1px solid #ddd;
-    }
-    .footer a {
-      color: #4FFFE3;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>SaaSRow Newsletter</h1>
-  </div>
-  <div class="content">
-    ${content.split('\n').map(para => para.trim() ? `<p>${para}</p>` : '').join('')}
-  </div>
-  <div class="footer">
-    <p>You're receiving this email because you subscribed to the SaaSRow newsletter.</p>
-    <p>
-      <a href="${siteUrl}/unsubscribe?email=%recipient.email%">Unsubscribe</a> |
-      <a href="${siteUrl}">Visit SaaSRow</a>
-    </p>
-    <p>© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.</p>
-  </div>
-</body>
-</html>
-    `.trim()
+    // Markdown body -> multipart/alternative (HTML + text/plain), each carrying the
+    // recipient's own unsubscribe link. Pasted markup is escaped, never injected.
+    const buildParts = (email: string) =>
+      buildEmailParts({
+        markdown: content,
+        heading: 'SaaSRow Newsletter',
+        footer: [
+          { text: "You're receiving this email because you subscribed to the SaaSRow newsletter." },
+          { text: 'Unsubscribe', href: `${siteUrl}/unsubscribe?email=${encodeURIComponent(email)}` },
+          { text: 'Visit SaaSRow', href: siteUrl },
+          { text: `© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.` },
+        ],
+      })
 
     // Resend's batch endpoint sends individual emails (one per recipient, max 100 per call)
     const BATCH_SIZE = 100
@@ -181,9 +128,7 @@ Deno.serve(async (req: Request) => {
             from: `SaaSRow <newsletter@${fromDomain}>`,
             to: email,
             subject,
-            // Per-recipient unsubscribe link (replaces Mailgun's %recipient.email% template var)
-            html: htmlContent.replace('%recipient.email%', encodeURIComponent(email)),
-            text: content,
+            ...buildParts(email),
           }))
         ),
       })
@@ -237,7 +182,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Newsletter error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

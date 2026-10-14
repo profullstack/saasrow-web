@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import fs from 'fs'
 import path from 'path'
-import { markdownToEmailHtml, markdownToPlainText } from '@/lib/emailMarkdown'
+import { buildEmailParts, markdownToEmailHtml, markdownToPlainText } from '@/lib/emailMarkdown'
 import { isSendableEmail, sendableEmails } from '@/lib/emailRecipients'
 
 describe('markdownToEmailHtml', () => {
@@ -127,8 +127,36 @@ describe('markdownToPlainText', () => {
   })
 })
 
+describe('buildEmailParts', () => {
+  const footer = [
+    { text: 'You subscribed.' },
+    { text: 'Unsubscribe', href: 'https://saasrow.com/unsubscribe?email=a%40b.co' },
+  ]
+
+  it('builds an HTML document and a matching text/plain part from one markdown source', () => {
+    const { html, text } = buildEmailParts({ markdown: '## Hi\n\nSee [the site](https://saasrow.com).', heading: 'SaaSRow', footer })
+    expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
+    expect(html).toContain('>Hi</h2>')
+    expect(html).toContain('href="https://saasrow.com/unsubscribe?email=a%40b.co"')
+    expect(text).toContain('Hi\n\nSee the site (https://saasrow.com).')
+    expect(text).toContain('\n--\nYou subscribed.\nUnsubscribe: https://saasrow.com/unsubscribe?email=a%40b.co\n')
+    expect(text).not.toContain('<')
+  })
+
+  it('escapes the heading and footer and drops unsafe footer links', () => {
+    const { html } = buildEmailParts({
+      markdown: 'x',
+      heading: '<b>X</b>',
+      footer: [{ text: '<i>t</i>', href: 'javascript:alert(1)' }],
+    })
+    expect(html).toContain('&lt;b&gt;X&lt;/b&gt;')
+    expect(html).toContain('&lt;i&gt;t&lt;/i&gt;')
+    expect(html).not.toContain('javascript:')
+  })
+})
+
 describe('renderer copies stay in sync', () => {
-  it.each(['emailMarkdown.ts', 'emailRecipients.ts'])(
+  it.each(['emailMarkdown.ts', 'emailRecipients.ts', 'broadcastDraft.ts'])(
     'src/lib and supabase/functions/_shared hold identical copies of %s',
     (file) => {
       const root = process.cwd()

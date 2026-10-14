@@ -7,7 +7,7 @@ import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { callFn } from '@/lib/clientApi'
-import { markdownToEmailHtml } from '@/lib/emailMarkdown'
+import { buildEmailParts, markdownToEmailHtml } from '@/lib/emailMarkdown'
 import { isSendableEmail } from '@/lib/emailRecipients'
 
 type Audience = 'newsletter' | 'users' | 'all'
@@ -36,6 +36,13 @@ const AUDIENCE_OPTIONS: AudienceOption[] = [
   },
 ]
 
+/** Mirrors the footer send-email-broadcast appends, for the plain-text preview. */
+const BROADCAST_FOOTER = [
+  { text: "You're receiving this email because you have an account on SaaSRow." },
+  { text: 'Visit SaaSRow', href: 'https://saasrow.com' },
+  { text: `© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.` },
+]
+
 interface RecipientPreview {
   count: number
   loading: boolean
@@ -45,7 +52,6 @@ interface RecipientPreview {
 export default function EmailBroadcast() {
   const router = useRouter()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [adminEmail, setAdminEmail] = useState<string | null>(null)
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   const [subject, setSubject] = useState('')
@@ -53,6 +59,9 @@ export default function EmailBroadcast() {
   const [audience, setAudience] = useState<Audience>('all')
   const [sending, setSending] = useState(false)
   const [preview, setPreview] = useState<RecipientPreview>({ count: 0, loading: false, error: null })
+  const [description, setDescription] = useState('')
+  const [drafting, setDrafting] = useState(false)
+  const [previewMode, setPreviewMode] = useState<'html' | 'text'>('html')
 
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; message: string } | null>(null)
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null)
@@ -61,7 +70,6 @@ export default function EmailBroadcast() {
     const storedEmail = sessionStorage.getItem('adminEmail')
     const storedToken = sessionStorage.getItem('adminToken')
     if (storedEmail && storedToken) {
-      setAdminEmail(storedEmail)
       setIsAuthenticated(true)
     } else {
       router.replace('/admin')
@@ -114,6 +122,34 @@ export default function EmailBroadcast() {
     }
   }
 
+  const handleDraft = async () => {
+    if (!description.trim()) {
+      setAlertMessage({ type: 'warning', message: 'Describe the email you want written first.' })
+      return
+    }
+    setDrafting(true)
+    try {
+      const res = await callFn('draft-email-broadcast', {
+        method: 'POST',
+        adminToken: sessionStorage.getItem('adminToken') ?? '',
+        // The current draft goes along so a second click revises instead of starting over.
+        body: { description, audience, subject, content },
+      })
+      const result = await res.json()
+      if (res.ok) {
+        setSubject(result.subject)
+        setContent(result.content)
+        setAlertMessage({ type: 'info', message: 'Draft written. Review and edit it before sending.' })
+      } else {
+        setAlertMessage({ type: 'error', message: result.error || 'Failed to write the draft.' })
+      }
+    } catch {
+      setAlertMessage({ type: 'error', message: 'An unexpected error occurred while drafting.' })
+    } finally {
+      setDrafting(false)
+    }
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!subject.trim() || !content.trim()) {
@@ -141,7 +177,8 @@ export default function EmailBroadcast() {
     try {
       const res = await callFn('send-email-broadcast', {
         method: 'POST',
-        body: { subject, content, adminEmail, audience },
+        adminToken: sessionStorage.getItem('adminToken') ?? '',
+        body: { subject, content, audience },
       })
       const result = await res.json()
       if (res.ok) {
@@ -151,6 +188,7 @@ export default function EmailBroadcast() {
         setAlertMessage({ type: result.failedCount ? 'warning' : 'success', message: parts.join(' ') })
         setSubject('')
         setContent('')
+        setDescription('')
       } else {
         setAlertMessage({ type: 'error', message: result.error || 'Failed to send email broadcast.' })
       }
@@ -262,6 +300,37 @@ export default function EmailBroadcast() {
               <p className="text-white/50 font-ubuntu text-sm">Write the email you want to send.</p>
             </div>
 
+            <div className="rounded-xl border border-[#4FFFE3]/30 bg-[#2e2e2e] p-4 sm:p-5">
+              <label htmlFor="description" className="block text-white/80 font-ubuntu text-sm mb-2">
+                Describe the email <span className="text-white/40">(optional, AI writes the subject and body)</span>
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Announce that listings now get a free screenshot and AI-written description. Thank founders, ask them to check their listing, link to saasrow.com/manage."
+                disabled={sending || drafting}
+                rows={4}
+                maxLength={4000}
+                className="w-full px-4 py-3 bg-[#1f1f1f] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu placeholder-white/30 disabled:opacity-50 resize-y transition text-sm"
+              />
+              <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleDraft}
+                  disabled={sending || drafting || !description.trim()}
+                  className="px-5 py-2.5 rounded-full bg-[#4FFFE3] text-neutral-900 font-ubuntu font-bold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed text-sm w-fit"
+                >
+                  {drafting ? 'Writing...' : subject || content ? 'Rewrite with AI' : 'Write with AI'}
+                </button>
+                <p className="text-white/40 font-ubuntu text-xs">
+                  {subject || content
+                    ? 'Rewrites the current subject and body to match the description.'
+                    : 'Fills in the subject and body below. Edit anything before sending.'}
+                </p>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="subject" className="block text-white/80 font-ubuntu text-sm mb-2">
                 Subject line
@@ -273,7 +342,7 @@ export default function EmailBroadcast() {
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="e.g. Important update from SaaSRow"
                 required
-                disabled={sending}
+                disabled={sending || drafting}
                 className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu placeholder-white/30 disabled:opacity-50 transition"
               />
             </div>
@@ -288,7 +357,7 @@ export default function EmailBroadcast() {
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={'Paste or write markdown — plain text works too.\n\n# Heading\n\nSome **bold** text with a [link](https://saasrow.com).\n\n- bullet one\n- bullet two'}
                 required
-                disabled={sending}
+                disabled={sending || drafting}
                 rows={14}
                 className="w-full px-4 py-3 bg-[#2e2e2e] text-white rounded-xl outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu placeholder-white/30 disabled:opacity-50 resize-y transition font-mono text-sm"
               />
@@ -296,6 +365,7 @@ export default function EmailBroadcast() {
                 Markdown is converted to HTML for the email: headings (#), <strong className="font-bold">**bold**</strong>,{' '}
                 <em>*italic*</em>, [links](url), images, `code`, &gt; quotes, bullet and numbered lists, --- rules.
                 Plain text is fine as-is — line breaks are preserved. Pasted HTML is shown as text, not rendered.
+                Every email goes out as multipart/alternative: this HTML plus a plain-text version of the same markdown.
               </p>
             </div>
           </div>
@@ -305,8 +375,27 @@ export default function EmailBroadcast() {
             <div className="bg-[#3a3a3a] rounded-2xl p-6 sm:p-8">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-white text-xl font-bold font-ubuntu">Preview</h2>
-                <span className="text-white/40 font-ubuntu text-xs">Rendered exactly as the email will be</span>
+                <div className="flex rounded-full bg-[#2e2e2e] p-1 text-xs font-ubuntu">
+                  {(['html', 'text'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setPreviewMode(mode)}
+                      className={`px-3 py-1 rounded-full transition-colors ${
+                        previewMode === mode ? 'bg-[#4FFFE3] text-neutral-900 font-bold' : 'text-white/60 hover:text-white'
+                      }`}
+                    >
+                      {mode === 'html' ? 'HTML' : 'Plain text'}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {previewMode === 'text' ? (
+                <pre className="bg-white rounded-xl p-6 text-gray-800 text-sm leading-relaxed whitespace-pre-wrap break-words font-mono">
+                  {subject && `Subject: ${subject}\n\n`}
+                  {buildEmailParts({ markdown: content, heading: 'SaaSRow', footer: BROADCAST_FOOTER }).text}
+                </pre>
+              ) : (
               <div className="bg-white rounded-xl p-6 text-gray-800 font-sans text-sm leading-relaxed">
                 <div
                   className="mb-4 p-4 rounded-lg text-center font-bold text-lg"
@@ -326,6 +415,7 @@ export default function EmailBroadcast() {
                   You&apos;re receiving this because you have an account on SaaSRow.
                 </p>
               </div>
+              )}
             </div>
           )}
 
