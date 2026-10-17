@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { AdUnit } from '../components/AdUnit'
-import { supabase } from '../lib/supabase';
+import StorageImage from '../components/StorageImage';
 import { Heart, ExternalLink } from 'lucide-react';
 import { BookmarkButton } from '../components/BookmarkButton';
 
@@ -143,9 +143,10 @@ export function Favorites() {
                     <div className="flex items-start justify-between mb-4">
                       <Link href={`/software/${software.id}`} className="flex items-start gap-3 flex-1">
                         {software.logo && (
-                          <img
-                            src={supabase.storage.from('software-logos').getPublicUrl(software.logo).data.publicUrl}
-                            alt={software.title}
+                          <StorageImage
+                            bucket="software-logos"
+                            path={software.logo}
+                            title={software.title}
                             className="w-12 h-12 rounded-lg object-cover bg-white p-2 flex-shrink-0"
                           />
                         )}

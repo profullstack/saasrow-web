@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import StorageImage from './StorageImage'
 import { callFn } from '@/lib/clientApi'
 import { BookmarkButton } from './BookmarkButton'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
@@ -239,13 +240,13 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
         <div className="flex items-center gap-2 sm:gap-3 mb-2">
           {software.logo && (
             <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-white p-1.5 sm:p-2 flex items-center justify-center">
-              <img
-                src={supabase.storage.from('software-logos').getPublicUrl(software.logo).data.publicUrl}
+              <StorageImage
+                bucket="software-logos"
+                path={software.logo}
+                title={software.title}
                 alt={`${software.title} logo`}
                 className="max-w-full max-h-full object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
+                fallbackClassName="w-full h-full rounded text-lg bg-[#4FFFE3]/10"
               />
             </div>
           )}
@@ -278,13 +279,13 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
 
       {software.image && (
         <div className="mb-4 rounded-lg overflow-hidden">
-          <img
-            src={supabase.storage.from('software-images').getPublicUrl(software.image).data.publicUrl}
+          <StorageImage
+            bucket="software-images"
+            path={software.image}
+            title={software.title}
             alt={`${software.title} preview`}
             className="w-full h-32 object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none'
-            }}
+            fallbackClassName="w-full h-32 text-4xl"
           />
         </div>
       )}

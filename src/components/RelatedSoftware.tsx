@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '../lib/supabase'
+import StorageImage from './StorageImage'
 
 interface RelatedSubmission {
   id: string
@@ -74,9 +74,10 @@ export function RelatedSoftware({ currentId, category, tags = [] }: RelatedSoftw
           >
             <div className="flex items-start gap-3 mb-3">
               {item.logo ? (
-                <img
-                  src={supabase.storage.from('software-logos').getPublicUrl(item.logo).data.publicUrl}
-                  alt={item.title}
+                <StorageImage
+                  bucket="software-logos"
+                  path={item.logo}
+                  title={item.title}
                   className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                 />
               ) : (
