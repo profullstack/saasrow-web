@@ -15,6 +15,7 @@ import { BookmarkButton } from '../components/BookmarkButton'
 import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
+import StorageImage from '../components/StorageImage'
 
 interface Submission {
   id: string
@@ -305,13 +306,13 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
                 <div className="flex items-start gap-6 mb-6">
                   {submission.logo && (
                     <div className="flex-shrink-0">
-                      <img
-                        src={supabase.storage.from('software-logos').getPublicUrl(submission.logo).data.publicUrl}
+                      <StorageImage
+                        bucket="software-logos"
+                        path={submission.logo}
+                        title={submission.title}
                         alt={`${submission.title} logo`}
                         className="w-24 h-24 rounded-xl bg-white p-3 object-contain"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
+                        fallbackClassName="w-24 h-24 rounded-xl text-4xl"
                       />
                     </div>
                   )}
@@ -382,13 +383,13 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
 
                 {submission.image && (
                   <div className="mb-6 rounded-xl overflow-hidden">
-                    <img
-                      src={supabase.storage.from('software-images').getPublicUrl(submission.image).data.publicUrl}
+                    <StorageImage
+                      bucket="software-images"
+                      path={submission.image}
+                      title={submission.title}
                       alt={`${submission.title} preview`}
                       className="w-full h-64 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
+                      fallbackClassName="w-full h-64 text-6xl"
                     />
                   </div>
                 )}
