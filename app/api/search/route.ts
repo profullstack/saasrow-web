@@ -1,19 +1,20 @@
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: Request) {
   try {
     const supabase = getSupabaseAdmin()
-    const { data, error } = await supabase
+    const data = await fetchAllRows((from, to) => supabase
       .from('software_submissions')
       .select('tags')
       .eq('status', 'approved')
       .not('tags', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, to))
 
-    if (error) throw error
-
-    return new Response(JSON.stringify({ data: data ?? [] }), {
+    return new Response(JSON.stringify({ data }), {
       headers: { 'Content-Type': 'application/json' },
     })
   } catch (error) {

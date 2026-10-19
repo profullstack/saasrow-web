@@ -1,24 +1,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { requireAdmin } from '../_shared/adminAuth.ts'
+import { fetchAll } from '../_shared/fetchAll.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Token',
-}
-
-// PostgREST caps a response at db-max-rows (1000), so page through.
-const pageSize = 1000
-
-async function fetchAll(page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>) {
-  const rows: any[] = []
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await page(from, from + pageSize - 1)
-    if (error) throw error
-    rows.push(...(data || []))
-    if (!data || data.length < pageSize) break
-  }
-  return rows
 }
 
 Deno.serve(async (req: Request) => {

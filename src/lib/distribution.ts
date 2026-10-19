@@ -1,5 +1,6 @@
 import 'server-only'
 import { getSupabaseAdmin } from './supabaseAdmin'
+import { fetchAllRows } from './fetchAllRows'
 import type { Submission } from './submissions'
 import { siteUrl } from './structuredData'
 import { attributeClient, type ReadChannel } from './aiClients'
@@ -175,15 +176,16 @@ export async function getProduct(id: string): Promise<Submission | null> {
 
 export async function listCategories(): Promise<Array<{ name: string; count: number }>> {
   const supabase = getSupabaseAdmin()
-  const { data, error } = await supabase
+  const data = await fetchAllRows<{ category: string | null }>((from, to) => supabase
     .from('software_submissions')
     .select('category')
     .eq('status', 'approved')
     .not('category', 'is', null)
-  if (error) throw new Error(`listCategories failed: ${error.message}`)
+    .order('id', { ascending: true })
+    .range(from, to))
 
   const counts = new Map<string, number>()
-  for (const row of (data ?? []) as Array<{ category: string | null }>) {
+  for (const row of data) {
     if (!row.category) continue
     counts.set(row.category, (counts.get(row.category) ?? 0) + 1)
   }
@@ -270,17 +272,19 @@ export async function getDistributionStats(): Promise<DistributionStats> {
       .select('id', { count: 'exact', head: true })
       .eq('status', 'approved'),
     supabase.from('ai_reads_30d').select('reads, bots').maybeSingle(),
-    supabase
+    fetchAllRows<{
+      upvotes: number | null
+      view_count: number | null
+      category: string | null
+    }>((from, to) => supabase
       .from('software_submissions')
       .select('upvotes, view_count, category')
-      .eq('status', 'approved'),
+      .eq('status', 'approved')
+      .order('id', { ascending: true })
+      .range(from, to)),
   ])
 
-  const rows = (totalsRes.data ?? []) as Array<{
-    upvotes: number | null
-    view_count: number | null
-    category: string | null
-  }>
+  const rows = totalsRes
 
   return {
     listings: listingsRes.count ?? 0,
