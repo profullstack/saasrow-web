@@ -3,20 +3,13 @@
 import { useState, FormEvent, ChangeEvent } from 'react'
 import Link from 'next/link'
 import { callFn } from '@/lib/clientApi'
+import { useFooterBottom } from './FooterBottom'
 
 export function Footer() {
+  const bottom = useFooterBottom()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-
-  const navigationLinks = [
-    { label: 'About', href: '/about' },
-    { label: 'Blog', href: '/blog' },
-    { label: 'Developers', href: '/developers' },
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'Terms', href: '/terms' },
-    { label: 'Unsubscribe', href: '/unsubscribe' },
-  ]
 
   const handleSubscribe = async (e: FormEvent) => {
     e.preventDefault()
@@ -79,18 +72,8 @@ export function Footer() {
         </p>
       )}
 
-      <nav
-        aria-label="Footer"
-        className="mt-4 flex items-center justify-center gap-x-5 gap-y-2 flex-wrap"
-      >
-        <span>&copy; {new Date().getFullYear()} <a href="https://profullstack.com/" className="hover:underline">Profullstack, Inc.</a></span>
-        {navigationLinks.map((link) => (
-          <Link key={link.label} href={link.href} className="hover:underline">
-            {link.label}
-          </Link>
-        ))}
-        <a href="https://github.com/profullstack/saasrow-web" className="hover:underline">GitHub</a>
-      </nav>
+      {/* Links, copyright and the Profullstack ring: @profullstack/footer (see FooterBottom) */}
+      <div className="mt-2">{bottom}</div>
     </footer>
   )
 }

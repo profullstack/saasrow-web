@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { ReferralProvider } from '@profullstack/referrals/react';
 import Script from 'next/script'
+import { Footer as PfsFooter } from '@profullstack/footer/react'
+import { FooterBottomProvider } from '@/components/FooterBottom'
 import { PitFooter } from '@/components/PitFooter'
 import JsonLd from '@/components/JsonLd'
 import { websiteLd, organizationLd } from '@/lib/structuredData'
@@ -8,7 +10,7 @@ import './globals.css'
 
 const SITE_URL = 'https://saasrow.com'
 
-// Re-render hourly so the pit.world footer stays fresh.
+// Re-render hourly so @profullstack/footer and the pit.world footer stay fresh.
 export const revalidate = 3600
 
 export const metadata: Metadata = {
@@ -52,7 +54,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ReferralProvider>
-          {children}
+          <FooterBottomProvider
+            bottom={
+              <PfsFooter
+                site="https://saasrow.com/"
+                since={2025}
+                links={[
+                  { label: 'About', href: '/about' },
+                  { label: 'Blog', href: '/blog' },
+                  { label: 'Developers', href: '/developers' },
+                  { label: 'Privacy', href: '/privacy' },
+                  { label: 'Terms', href: '/terms' },
+                  { label: 'Unsubscribe', href: '/unsubscribe' },
+                  { label: 'GitHub', href: 'https://github.com/profullstack/saasrow-web' },
+                ]}
+              />
+            }
+          >
+            {children}
+          </FooterBottomProvider>
         </ReferralProvider>
         <Script
           src="https://analytics.ahrefs.com/analytics.js"
