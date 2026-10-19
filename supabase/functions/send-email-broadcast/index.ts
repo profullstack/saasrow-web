@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { buildEmailParts } from '../_shared/emailMarkdown.ts'
 import { sendableEmails } from '../_shared/emailRecipients.ts'
 import { requireAdmin } from '../_shared/adminAuth.ts'
+import { fetchAll } from '../_shared/fetchAll.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,27 +60,35 @@ Deno.serve(async (req: Request) => {
 
     const emailSet = new Set<string>()
 
+    // Paged: an unpaged read stops at 1000 rows and silently skips the rest
+    // (the 2026-10-14 broadcast reached 842 people this way).
     if (audience === 'newsletter' || audience === 'all') {
-      const { data: subscribers, error } = await supabase
+      const subscribers = await fetchAll((from, to) => supabase
         .from('newsletter_subscriptions')
         .select('email')
         .eq('is_active', true)
-      if (error) throw new Error(`Newsletter subscribers fetch error: ${error.message}`)
-      for (const row of subscribers ?? []) emailSet.add(row.email.toLowerCase())
+        .order('id', { ascending: true })
+        .range(from, to))
+        .catch((error) => { throw new Error(`Newsletter subscribers fetch error: ${error.message}`) })
+      for (const row of subscribers) emailSet.add(row.email.toLowerCase())
     }
 
     if (audience === 'users' || audience === 'all') {
-      const { data: contacts, error } = await supabase
+      const contacts = await fetchAll((from, to) => supabase
         .from('submission_contacts')
         .select('email')
-      if (error) throw new Error(`Submission contacts fetch error: ${error.message}`)
-      for (const row of contacts ?? []) if (row.email) emailSet.add(row.email.toLowerCase())
+        .order('id', { ascending: true })
+        .range(from, to))
+        .catch((error) => { throw new Error(`Submission contacts fetch error: ${error.message}`) })
+      for (const row of contacts) if (row.email) emailSet.add(row.email.toLowerCase())
 
-      const { data: tokens, error: tokensError } = await supabase
+      const tokens = await fetchAll((from, to) => supabase
         .from('user_tokens')
         .select('email')
-      if (tokensError) throw new Error(`User tokens fetch error: ${tokensError.message}`)
-      for (const row of tokens ?? []) if (row.email) emailSet.add(row.email.toLowerCase())
+        .order('id', { ascending: true })
+        .range(from, to))
+        .catch((error) => { throw new Error(`User tokens fetch error: ${error.message}`) })
+      for (const row of tokens) if (row.email) emailSet.add(row.email.toLowerCase())
     }
 
     // Resend 422s an entire batch of 100 if a single address sits on a reserved domain

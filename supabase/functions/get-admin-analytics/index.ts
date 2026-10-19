@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { fetchAll } from '../_shared/fetchAll.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,17 +21,17 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { data: submissions, error: submissionsError } = await supabase
+    const submissions = await fetchAll((from, to) => supabase
       .from('software_submissions')
       .select('id, title, url, view_count, tier, status, submitted_at')
+      .order('id', { ascending: true })
+      .range(from, to))
 
-    if (submissionsError) throw submissionsError
-
-    const { data: clicks, error: clicksError } = await supabase
+    const clicks = await fetchAll((from, to) => supabase
       .from('submission_clicks')
       .select('submission_id')
-
-    if (clicksError) throw clicksError
+      .order('id', { ascending: true })
+      .range(from, to))
 
     const clicksBySubmission = clicks.reduce((acc, click) => {
       acc[click.submission_id] = (acc[click.submission_id] || 0) + 1

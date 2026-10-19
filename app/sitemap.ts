@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { getBlogList, getNewsList } from '@/lib/api'
+import { fetchAllRows } from '@/lib/fetchAllRows'
 
 // Regenerate at most hourly so new listings/posts get picked up without
 // rebuilding the whole site.
@@ -26,11 +27,12 @@ async function getApprovedSubmissions(): Promise<SitemapSubmission[]> {
   if (!url || !key) return []
   try {
     const admin = createClient(url, key, { auth: { persistSession: false } })
-    const { data } = await admin
+    return await fetchAllRows<SitemapSubmission>((from, to) => admin
       .from('software_submissions')
       .select('id, created_at, category, tags')
       .eq('status', 'approved')
-    return (data ?? []) as SitemapSubmission[]
+      .order('id', { ascending: true })
+      .range(from, to))
   } catch {
     return []
   }
