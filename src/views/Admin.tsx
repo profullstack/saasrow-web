@@ -536,7 +536,8 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     setLoadingUsers(true)
     try {
-      const response = await callFn('get-admin-users')
+      const token = sessionStorage.getItem('adminToken') || undefined
+      const response = await callFn('get-admin-users', { adminToken: token })
 
       if (!response.ok) {
         const error = await response.json()
