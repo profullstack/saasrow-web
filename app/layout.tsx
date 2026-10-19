@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import { ReferralProvider } from '@profullstack/referrals/react';
 import Script from 'next/script'
-import { Footer as PfsFooter } from '@profullstack/footer/react'
-import { FooterBottomProvider } from '@/components/FooterBottom'
+import { PitFooter } from '@/components/PitFooter'
 import JsonLd from '@/components/JsonLd'
 import { websiteLd, organizationLd } from '@/lib/structuredData'
 import './globals.css'
 
 const SITE_URL = 'https://saasrow.com'
 
-// Re-render hourly so @profullstack/footer picks up its @latest template.
+// Re-render hourly so the pit.world footer stays fresh.
 export const revalidate = 3600
 
 export const metadata: Metadata = {
@@ -53,21 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ReferralProvider>
-          <FooterBottomProvider
-            bottom={
-              <PfsFooter
-                site="https://saasrow.com/"
-                since={2025}
-                links={[
-                  { label: 'Terms of Service', href: '/terms' },
-                  { label: 'Privacy Policy', href: '/privacy' },
-                  { label: 'Unsubscribe', href: '/unsubscribe' },
-                ]}
-              />
-            }
-          >
-            {children}
-          </FooterBottomProvider>
+          {children}
         </ReferralProvider>
         <Script
           src="https://analytics.ahrefs.com/analytics.js"
@@ -85,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Script data-site="f2463c61-25b8-47af-bf2a-096563b37bf5" src="https://crawlproof.com/stats.js" strategy="afterInteractive" />
       {/* CrawlProof ad loader: scans for [data-cp-ad] slots (rendered by <AdUnit />) and fills them in place. */}
       <Script src="https://crawlproof.com/ad.js" strategy="afterInteractive" />
+        <PitFooter />
       </body>
     </html>
   )
