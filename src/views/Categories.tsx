@@ -77,6 +77,8 @@ export default function CategoriesPage({ initialCategories }: CategoriesPageProp
             </p>
           </div>
 
+          <AdUnit />
+
           {loading ? (
             <div className="text-center py-12">
               <p className="text-white/70 font-ubuntu text-xl">Loading categories...</p>
@@ -113,8 +115,6 @@ export default function CategoriesPage({ initialCategories }: CategoriesPageProp
             </div>
           )}
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
     </div>

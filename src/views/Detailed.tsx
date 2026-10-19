@@ -14,6 +14,8 @@ export default function DetailedPage() {
         <Header />
 
         <main className="w-full max-w-[1200px] mx-auto px-4 py-12">
+          <AdUnit className="mt-0" />
+
           <div className="space-y-12">
             <section>
               <h2 className="text-white text-3xl font-bold font-ubuntu mb-6">
@@ -98,8 +100,6 @@ export default function DetailedPage() {
             </section>
           </div>
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
     </div>

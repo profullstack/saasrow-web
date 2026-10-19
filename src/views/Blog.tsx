@@ -63,6 +63,8 @@ export default function BlogPage({ initialPosts }: BlogPageProps = {}) {
             </p>
           </div>
 
+          <AdUnit />
+
           <div className="space-y-6">
             {loading ? (
               <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
@@ -131,8 +133,6 @@ export default function BlogPage({ initialPosts }: BlogPageProps = {}) {
             )}
           </div>
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
     </div>

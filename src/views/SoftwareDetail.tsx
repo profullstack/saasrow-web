@@ -443,6 +443,8 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
                 </div>
               </div>
 
+              <AdUnit />
+
               {/* Every approved listing gets at least a homepage screenshot; paid tiers get a multi-page gallery. */}
               <ScreenshotGallery submissionId={submission.id} />
 
@@ -492,8 +494,6 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
             </>
           )}
         </main>
-
-        <AdUnit />
         <Footer />
         <FloatingCTA />
       </div>

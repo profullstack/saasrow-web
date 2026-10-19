@@ -129,6 +129,8 @@ export default function CategoryPage({ initialSubmissions }: CategoryPageProps =
             </p>
           </div>
 
+          <AdUnit />
+
           {!loading && submissions.length > 0 && (
             <div className="flex justify-end mb-6">
               <select
@@ -161,8 +163,6 @@ export default function CategoryPage({ initialSubmissions }: CategoryPageProps =
             </div>
           )}
         </main>
-
-        <AdUnit />
         <Footer />
         <FloatingCTA />
       </div>

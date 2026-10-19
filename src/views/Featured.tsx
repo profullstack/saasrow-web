@@ -340,6 +340,8 @@ export default function FeaturedPage() {
             People visit our platform when looking for alternatives or when comparing products.
           </p>
 
+          <AdUnit />
+
           <p className="text-[#4FFFE3] text-lg font-ubuntu font-bold mb-8">
             Featured is a one-time $2. Premium lifts every limit from $5/month.
           </p>
@@ -450,8 +452,6 @@ export default function FeaturedPage() {
             </div>
           </div>
         </section>
-
-        <AdUnit />
         <Footer />
       </div>
 
