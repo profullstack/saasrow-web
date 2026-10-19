@@ -1,9 +1,24 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { requireAdmin } from '../_shared/adminAuth.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey, X-Admin-Token',
+}
+
+// PostgREST caps a response at db-max-rows (1000), so page through.
+const pageSize = 1000
+
+async function fetchAll(page: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: any }>) {
+  const rows: any[] = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await page(from, from + pageSize - 1)
+    if (error) throw error
+    rows.push(...(data || []))
+    if (!data || data.length < pageSize) break
+  }
+  return rows
 }
 
 Deno.serve(async (req: Request) => {
@@ -20,38 +35,42 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { data: submissions, error: submissionsError } = await supabase
+    // The response holds every submitter's email, so it is admin-only.
+    const admin = await requireAdmin(req, supabase, corsHeaders)
+    if (admin instanceof Response) return admin
+
+    const submissions = await fetchAll((from, to) => supabase
       .from('software_submissions')
       .select(`
         id,
         tier,
         created_at,
         submitted_at,
-        submission_contacts!inner(email)
+        submission_contacts(email)
       `)
       .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to))
 
-    if (submissionsError) throw submissionsError
-
-    const { data: tokens, error: tokensError } = await supabase
+    const tokens = await fetchAll((from, to) => supabase
       .from('user_tokens')
       .select('*')
       .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to))
 
-    if (tokensError) throw tokensError
-
-    const { data: subscriptions, error: subsError } = await supabase
+    const subscriptions = await fetchAll((from, to) => supabase
       .from('stripe_subscriptions')
       .select('customer_id, status, current_period_end, cancel_at_period_end, email')
       .is('deleted_at', null)
-
-    if (subsError) throw subsError
+      .order('id', { ascending: true })
+      .range(from, to))
 
     return new Response(
       JSON.stringify({
-        submissions: submissions || [],
-        tokens: tokens || [],
-        subscriptions: subscriptions || []
+        submissions,
+        tokens,
+        subscriptions
       }),
       {
         status: 200,
