@@ -1,4 +1,5 @@
 import { gate } from "@/lib/crawl-gateway";
+import { meter } from "@/lib/throttle";
 import { screenSubmission } from "@/lib/submission-guard";
 import { NextResponse, type NextRequest } from "next/server";
 import { trackReferralCode } from "@profullstack/stack/referrals";
@@ -14,6 +15,11 @@ export async function middleware(request: NextRequest) {
 
   const answer = await gate(request);
   if (answer) return answer;
+
+  // Then the site-wide allowance on page routes: 100 requests a minute per
+  // caller, and going over is answered 402 with the same offer (lib/throttle).
+  const overLimit = await meter(request);
+  if (overLimit) return overLimit;
 
   return trackReferralCode(request, NextResponse.next() as any);
 }
