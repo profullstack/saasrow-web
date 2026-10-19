@@ -161,6 +161,8 @@ export default function BlogPostPage({ initialPost }: BlogPostPageProps = {}) {
                 </div>
               )}
 
+              <AdUnit />
+
               <div
                 className="prose prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: post.content ?? '' }}
@@ -187,8 +189,6 @@ export default function BlogPostPage({ initialPost }: BlogPostPageProps = {}) {
             </div>
           </article>
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
 

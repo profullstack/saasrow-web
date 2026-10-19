@@ -147,6 +147,8 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
           </Link>
         </section>
 
+        <AdUnit />
+
         <SearchSection
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -168,7 +170,6 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
           selectedSort={selectedSort}
           initialListings={initialListings}
         />
-        <AdUnit />
         <Footer />
         <FloatingCTA />
       </div>

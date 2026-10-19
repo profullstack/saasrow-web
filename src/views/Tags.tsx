@@ -233,6 +233,8 @@ export default function TagsPage({ initialTags, initialSoftware }: TagsPageProps
             </p>
           </div>
 
+          <AdUnit />
+
           {loading ? (
             <div className="text-center py-12">
               <p className="text-white/70 font-ubuntu text-xl">Loading tags...</p>
@@ -269,8 +271,6 @@ export default function TagsPage({ initialTags, initialSoftware }: TagsPageProps
             </div>
           )}
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
     </div>

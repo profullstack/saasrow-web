@@ -10,8 +10,9 @@ interface AdUnitProps {
 /**
  * CrawlProof ad slot. The global loader (crawlproof.com/ad.js, added in the
  * root layout) scans for [data-cp-ad] elements and fills each in place with a
- * 300x250 iframe. Drop this anywhere inside page content — never leave a bare
- * slot div at the end of <body>, or it renders below the footer.
+ * 300x250 iframe. Drop this inside page content (under the page heading) —
+ * never directly above or inside the footer, and never as a bare slot div at
+ * the end of <body>, or it renders below the footer.
  */
 export function AdUnit({ className = '' }: AdUnitProps) {
   return (

@@ -130,6 +130,8 @@ export default function NewsPostPage({ initialPost }: NewsPostPageProps = {}) {
                 {post.title}
               </h1>
 
+              <AdUnit />
+
               <div
                 className="prose prose-invert max-w-none"
                 dangerouslySetInnerHTML={{ __html: post.content }}
@@ -143,8 +145,6 @@ export default function NewsPostPage({ initialPost }: NewsPostPageProps = {}) {
             </div>
           </article>
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
 

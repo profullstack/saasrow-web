@@ -21,14 +21,14 @@ export default function ExplorePage() {
             </p>
           </div>
 
+          <AdUnit />
+
           <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
             <p className="text-white/70 font-ubuntu text-xl">
               Explore page content coming soon. Check back later for curated software collections.
             </p>
           </div>
         </main>
-
-        <AdUnit />
         <Footer />
       </div>
     </div>

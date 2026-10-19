@@ -117,6 +117,8 @@ export function Favorites() {
             <h1 className="text-4xl font-bold text-white">My Favorites</h1>
           </div>
 
+          <AdUnit />
+
           {favoriteSoftware.length === 0 ? (
             <div className="bg-[#3a3a3a] rounded-2xl p-12 text-center">
               <Heart className="w-16 h-16 text-white/30 mx-auto mb-4" />
@@ -196,7 +198,6 @@ export function Favorites() {
           )}
         </div>
       </main>
-      <AdUnit />
       <Footer />
     </div>
   );
