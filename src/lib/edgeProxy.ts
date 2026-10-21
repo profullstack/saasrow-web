@@ -20,7 +20,7 @@ import { createSupabaseServerClient } from './supabaseServer'
  */
 
 // Functions that key behaviour off the caller's identity. Keep in sync when adding new ones.
-const USER_CONTEXT_FUNCTIONS = new Set(['vote', 'comments', 'bookmarks'])
+const USER_CONTEXT_FUNCTIONS = new Set(['vote', 'comments', 'bookmarks', 'coinpay-checkout'])
 
 // Headers we forward from the client to the edge function (lowercased).
 const FORWARDED_HEADERS = ['content-type', 'x-admin-token']

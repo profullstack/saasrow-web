@@ -46,12 +46,21 @@ Deno.serve(async (req: Request) => {
       .order('id', { ascending: true })
       .range(from, to))
 
-    const subscriptions = await fetchAll((from, to) => supabase
-      .from('stripe_subscriptions')
-      .select('customer_id, status, current_period_end, cancel_at_period_end, email')
-      .is('deleted_at', null)
+    // Live Premium terms bought through CoinPay, shaped like the old
+    // subscription rows the Users tab reads.
+    const terms = await fetchAll((from, to) => supabase
+      .from('coinpay_orders')
+      .select('email, term, period_end')
+      .neq('term', 'once')
+      .gt('period_end', new Date().toISOString())
       .order('id', { ascending: true })
       .range(from, to))
+    const subscriptions = terms.map((t: { email: string; period_end: string }) => ({
+      email: t.email,
+      status: 'active',
+      current_period_end: Math.floor(new Date(t.period_end).getTime() / 1000),
+      cancel_at_period_end: true,
+    }))
 
     return new Response(
       JSON.stringify({
@@ -66,7 +75,7 @@ Deno.serve(async (req: Request) => {
     )
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

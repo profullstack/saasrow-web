@@ -43,11 +43,10 @@ interface Submission {
 interface SubscriptionInfo {
   tier: string
   status: string
+  term?: string
   currentPeriodStart: number
   currentPeriodEnd: number
-  cancelAtPeriodEnd: boolean
-  paymentMethodBrand: string | null
-  paymentMethodLast4: string | null
+  renews?: boolean
 }
 
 interface BillingHistoryItem {
@@ -55,6 +54,7 @@ interface BillingHistoryItem {
   amount: number
   currency: string
   status: string
+  method?: string | null
   createdAt: string
 }
 
@@ -80,7 +80,6 @@ export default function ManageListings() {
   })
   const [saving, setSaving] = useState(false)
   const [processing, setProcessing] = useState(false)
-  const [cancelling, setCancelling] = useState(false)
   const [hasActiveSubscription, setHasActiveSubscription] = useState(false)
   const [userTier, setUserTier] = useState<string | null>(null)
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
@@ -315,46 +314,6 @@ export default function ManageListings() {
     setFormData({ ...formData, socialLinks: links })
   }
 
-  const handleCancelSubscription = async () => {
-    if (!token) return
-
-    setConfirmDialog({
-      title: 'Cancel Subscription',
-      message: 'Are you sure you want to cancel your subscription? Your listings will remain active until the end of your billing period, after which they will revert to the free tier.',
-      confirmColor: 'danger',
-      onConfirm: () => {
-        setConfirmDialog(null)
-        performCancelSubscription()
-      }
-    })
-  }
-
-  const performCancelSubscription = async () => {
-    if (!token) return
-
-    setCancelling(true)
-    try {
-      const decodedToken = decodeURIComponent(token)
-      const response = await callFn('cancel-subscription', {
-        method: 'POST',
-        body: { token: decodedToken },
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to cancel subscription')
-      }
-
-      setAlertMessage({ type: 'success', message: 'Subscription cancelled successfully. Your listings will remain active until the end of your billing period.' })
-      setHasActiveSubscription(false)
-    } catch (err) {
-      setAlertMessage({ type: 'error', message: err instanceof Error ? err.message : 'Failed to cancel subscription' })
-    } finally {
-      setCancelling(false)
-    }
-  }
-
   const handleGenerateScreenshots = async (submissionId: string, url: string, tier: string) => {
     setGeneratingScreenshots(submissionId)
     try {
@@ -535,7 +494,7 @@ export default function ManageListings() {
               <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-6">
                 <div className="flex-1">
                   <h2 className="text-xl font-bold text-white mb-2 font-ubuntu">
-                    Subscription Management
+                    Plan and Billing
                   </h2>
                   <p className="text-white/70 mb-4 font-ubuntu">
                     You're currently on the <span className="font-bold text-[#4FFFE3] capitalize">{userTier}</span> tier
@@ -548,26 +507,18 @@ export default function ManageListings() {
                         <span className={`capitalize ${subscriptionInfo.status === 'active' ? 'text-green-400' : 'text-yellow-400'}`}>
                           {subscriptionInfo.status}
                         </span>
-                        {subscriptionInfo.cancelAtPeriodEnd && (
-                          <span className="text-red-400">(Cancels at period end)</span>
-                        )}
                       </div>
                       {subscriptionInfo.currentPeriodEnd && (
                         <div className="flex items-center gap-2">
-                          <span className="text-white/50">Renews on:</span>
+                          <span className="text-white/50">Premium until:</span>
                           <span className="text-white/90">
                             {new Date(subscriptionInfo.currentPeriodEnd * 1000).toLocaleDateString()}
                           </span>
                         </div>
                       )}
-                      {subscriptionInfo.paymentMethodBrand && subscriptionInfo.paymentMethodLast4 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-white/50">Payment method:</span>
-                          <span className="text-white/90 capitalize">
-                            {subscriptionInfo.paymentMethodBrand} •••• {subscriptionInfo.paymentMethodLast4}
-                          </span>
-                        </div>
-                      )}
+                      <p className="text-white/50">
+                        Nothing renews automatically. Pay again on the <a href="/featured" className="text-[#4FFFE3] underline">Featured page</a> to add another term.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -577,13 +528,6 @@ export default function ManageListings() {
                     className="px-6 py-3 border border-white/10 rounded-full hover:bg-white/5 transition text-white font-ubuntu font-bold text-sm sm:text-base"
                   >
                     {showBilling ? 'Hide' : 'View'} Billing
-                  </button>
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={cancelling}
-                    className="px-6 py-3 border border-red-400/30 rounded-full hover:bg-red-400/10 transition text-red-400 font-ubuntu font-bold disabled:opacity-50 text-sm sm:text-base"
-                  >
-                    {cancelling ? 'Cancelling...' : 'Cancel'}
                   </button>
                 </div>
               </div>
@@ -598,6 +542,7 @@ export default function ManageListings() {
                           <div>
                             <div className="text-white font-ubuntu">
                               ${(item.amount / 100).toFixed(2)} {item.currency.toUpperCase()}
+                              {item.method && <span className="text-white/50 text-sm"> via {item.method}</span>}
                             </div>
                             <div className="text-white/50 text-sm font-ubuntu">
                               {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString()}

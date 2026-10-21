@@ -51,41 +51,39 @@ Deno.serve(async (req: Request) => {
     let subscriptionInfo = null
     let billingHistory = []
 
-    const { data: subscription } = await supabase
-      .from('stripe_subscriptions')
-      .select('*')
-      .eq('email', userToken.email)
-      .is('deleted_at', null)
-      .maybeSingle()
+    // Premium months and years are fixed terms paid through CoinPay: the live
+    // one (latest period_end in the future) is the "subscription".
+    const now = Date.now()
+    const { data: orders } = await supabase
+      .from('coinpay_orders')
+      .select('id, tier, term, amount_cents, currency, status, method, period_start, period_end, created_at')
+      .ilike('email', userToken.email.replace(/[\\%_]/g, (c: string) => `\\${c}`))
+      .order('created_at', { ascending: false })
+      .limit(20)
 
-    if (subscription) {
+    const live = (orders ?? [])
+      .filter((o) => o.term !== 'once' && o.period_end && new Date(o.period_end).getTime() > now)
+      .sort((a, b) => new Date(b.period_end).getTime() - new Date(a.period_end).getTime())[0]
+
+    if (live) {
       subscriptionInfo = {
         tier: userToken.tier,
-        status: subscription.status,
-        currentPeriodStart: subscription.current_period_start,
-        currentPeriodEnd: subscription.current_period_end,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end,
-        paymentMethodBrand: subscription.payment_method_brand,
-        paymentMethodLast4: subscription.payment_method_last4,
-      }
-
-      const { data: orders } = await supabase
-        .from('stripe_orders')
-        .select('*')
-        .eq('customer_id', subscription.customer_id)
-        .order('created_at', { ascending: false })
-        .limit(10)
-
-      if (orders) {
-        billingHistory = orders.map(order => ({
-          id: order.id,
-          amount: order.amount_total,
-          currency: order.currency,
-          status: order.payment_status,
-          createdAt: order.created_at,
-        }))
+        status: 'active',
+        term: live.term,
+        currentPeriodStart: Math.floor(new Date(live.period_start ?? live.created_at).getTime() / 1000),
+        currentPeriodEnd: Math.floor(new Date(live.period_end).getTime() / 1000),
+        renews: false,
       }
     }
+
+    billingHistory = (orders ?? []).slice(0, 10).map((order) => ({
+      id: order.id,
+      amount: order.amount_cents,
+      currency: order.currency,
+      status: order.status,
+      method: order.method,
+      createdAt: order.created_at,
+    }))
 
     return new Response(
       JSON.stringify({
@@ -101,7 +99,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

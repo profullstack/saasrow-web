@@ -10,11 +10,12 @@ import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
-// Premium is sold three ways, all priced inline at checkout (no Stripe Price IDs).
+// Premium is sold three ways. Monthly and yearly are fixed terms (30 or 365
+// days per payment), not renewing subscriptions. Paid on CoinPay: any coin or PayPal.
 type PremiumTerm = 'monthly' | 'yearly' | 'lifetime'
 const PREMIUM_TERMS: Record<PremiumTerm, { label: string; cents: number; suffix: string; note: string }> = {
-  monthly: { label: 'Monthly', cents: 500, suffix: '/month', note: 'Cancel any time' },
-  yearly: { label: 'Yearly', cents: 2000, suffix: '/year', note: 'Billed once a year' },
+  monthly: { label: 'Monthly', cents: 500, suffix: '/month', note: '30 days per payment, nothing renews' },
+  yearly: { label: 'Yearly', cents: 2000, suffix: '/year', note: '365 days per payment, nothing renews' },
   lifetime: { label: 'Lifetime', cents: 19900, suffix: ' one-time', note: 'Pay once, Premium forever' },
 }
 
@@ -50,7 +51,21 @@ export default function FeaturedPage() {
         localStorage.setItem('pendingTier', tier)
         sessionStorage.setItem('userEmail', userEmail)
       }
-      window.location.href = '/submit'
+      const sessionId = urlParams.get('session')
+      if (!sessionId) {
+        window.location.href = '/submit'
+        return
+      }
+      // Ask CoinPay how the session stands before moving on.
+      callFn('coinpay-checkout', { method: 'GET', query: { session: sessionId } })
+        .then((r) => r.json())
+        .then((d) => {
+          setAlertMessage(d.status === 'paid'
+            ? { type: 'success', message: 'Payment received. Your plan is active; check your email for your management link.' }
+            : { type: 'info', message: 'Payment is confirming. Your plan switches on as soon as it settles, and we email your management link.' })
+        })
+        .catch(() => undefined)
+        .finally(() => { setTimeout(() => { window.location.href = '/submit' }, 4000) })
       return
     }
 
@@ -67,8 +82,6 @@ export default function FeaturedPage() {
       description: 'Perfect for trying us out',
       monthlyPrice: 0,
       yearlyPrice: 0,
-      monthlyPriceId: null,
-      yearlyPriceId: null,
       oneTime: false,
       oneTimePrice: 0,
       features: [
@@ -85,8 +98,6 @@ export default function FeaturedPage() {
       description: 'For growing companies',
       monthlyPrice: 2,
       yearlyPrice: 2,
-      monthlyPriceId: null,
-      yearlyPriceId: null,
       // One-time payment instead of a recurring subscription (priced inline).
       oneTime: true,
       oneTimePrice: 2,
@@ -107,8 +118,6 @@ export default function FeaturedPage() {
       description: 'For established brands',
       monthlyPrice: 5,
       yearlyPrice: 20,
-      monthlyPriceId: null,
-      yearlyPriceId: null,
       // Monthly, yearly or lifetime: see PREMIUM_TERMS.
       oneTime: false,
       oneTimePrice: 199,
@@ -140,7 +149,11 @@ export default function FeaturedPage() {
     },
     {
       question: 'Are there any recurring charges?',
-      answer: 'Featured and Premium Lifetime are single payments with nothing to cancel. Premium Monthly and Yearly renew until you cancel.',
+      answer: 'No. Featured and Premium Lifetime are single payments. Premium Monthly and Yearly buy 30 or 365 days per payment and never renew on their own; pay again whenever you want more time.',
+    },
+    {
+      question: 'How can I pay?',
+      answer: 'Checkout runs on CoinPay: pay with Bitcoin, Ethereum, Solana, USDC, USDT and other coins, or with PayPal.',
     },
     {
       question: 'Can I upgrade later?',
@@ -226,16 +239,10 @@ export default function FeaturedPage() {
       const tier = pendingPlan.name.toLowerCase()
       const premium = tier === 'premium' ? PREMIUM_TERMS[premiumTerm] : null
       const isOneTime = pendingPlan.oneTime || premiumTerm === 'lifetime' && !!premium
-      // One-time plans are priced inline (amount in cents) so no pre-created
-      // Stripe Price is needed; subscriptions still use their Price ID.
-      const priceId = isOneTime
-        ? undefined
-        : billingPeriod === 'yearly'
-          ? pendingPlan.yearlyPriceId
-          : pendingPlan.monthlyPriceId
       const currentUrl = window.location.origin + '/featured'
-      const successUrl = `${currentUrl}?success=true&tier=${tier}&email=${encodeURIComponent(email)}`
+      const successUrl = `${currentUrl}?success=true&tier=${tier}&email=${encodeURIComponent(email)}&session={CHECKOUT_SESSION_ID}`
       const cancelUrl = `${currentUrl}?cancelled=true&plan=${tier}&period=${billingPeriod}`
+      const listingId = new URLSearchParams(window.location.search).get('listing') || undefined
 
       const getCookie = (name: string) => {
         const value = `; ${document.cookie}`
@@ -244,19 +251,17 @@ export default function FeaturedPage() {
         return undefined
       }
 
-      const response = await callFn('stripe-checkout', {
+      const response = await callFn('coinpay-checkout', {
         method: 'POST',
         body: {
-          price_id: priceId,
-          amount: premium ? premium.cents : isOneTime ? Math.round(pendingPlan.oneTimePrice * 100) : undefined,
           interval: premium && premiumTerm !== 'lifetime' ? (premiumTerm === 'monthly' ? 'month' : 'year') : undefined,
-          product_name: premium ? `SaaSRow Premium (${premium.label})` : isOneTime ? `SaaSRow ${pendingPlan.name} Listing` : undefined,
           success_url: successUrl,
           cancel_url: cancelUrl,
           mode: isOneTime ? 'payment' : 'subscription',
           tier,
           discount_code: pendingDiscount,
           customer_email: email,
+          submission_id: listingId,
           datafast_visitor_id: getCookie('datafast_visitor_id'),
           datafast_session_id: getCookie('datafast_session_id'),
         },
@@ -344,6 +349,9 @@ export default function FeaturedPage() {
 
           <p className="text-[#4FFFE3] text-lg font-ubuntu font-bold mb-8">
             Featured is a one-time $2. Premium lifts every limit from $5/month.
+          </p>
+          <p className="text-white/70 text-sm font-ubuntu -mt-6 mb-8">
+            Pay with Bitcoin, Ethereum, Solana, USDC and other coins, or PayPal, on CoinPay checkout.
           </p>
 
           <div className="grid md:grid-cols-3 gap-6 mb-16">
