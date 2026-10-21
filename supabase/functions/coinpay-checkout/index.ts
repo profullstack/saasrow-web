@@ -9,7 +9,9 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1';
 import { buildSessionRequest } from '../_shared/coinpay.ts';
 
-const API_URL = (Deno.env.get('COINPAY_API_URL') || 'https://coinpayportal.com').replace(/\/+$/, '');
+// coinpay-onboard writes COINPAY_API_URL as the API root (".../api"); accept
+// that or the bare origin.
+const API_URL = (Deno.env.get('COINPAY_API_URL') || 'https://coinpayportal.com').replace(/\/+$/, '').replace(/\/api$/, '');
 const API_KEY = Deno.env.get('COINPAY_API_KEY') || '';
 
 const headers = {
