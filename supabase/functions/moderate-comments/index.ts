@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { notifyCommentPublished } from "../_shared/commentNotify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,6 +102,8 @@ Deno.serve(async (req: Request) => {
           );
         }
 
+        await notifyCommentPublished(supabase, (data ?? []).map((c: { id: string }) => c.id));
+
         return new Response(
           JSON.stringify({ message: "Comments approved successfully", approved: data?.length ?? 0 }),
           {
@@ -121,10 +124,13 @@ Deno.serve(async (req: Request) => {
       }
 
       if (action === "approve") {
-        const { error } = await supabase
+        // Only a comment that was still pending notifies, so approving twice mails once.
+        const { data: approved, error } = await supabase
           .from("comments")
           .update({ is_verified: true })
-          .eq("id", commentId);
+          .eq("id", commentId)
+          .not("is_verified", "is", true)
+          .select("id");
 
         if (error) {
           return new Response(
@@ -135,6 +141,8 @@ Deno.serve(async (req: Request) => {
             }
           );
         }
+
+        await notifyCommentPublished(supabase, (approved ?? []).map((c: { id: string }) => c.id));
 
         return new Response(
           JSON.stringify({ message: "Comment approved successfully" }),

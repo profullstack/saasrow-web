@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { notifyCommentPublished } from "../_shared/commentNotify.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -219,6 +220,9 @@ Deno.serve(async (req: Request) => {
           }
         );
       }
+
+      // A signed-in comment is public at once; an anonymous one notifies on approval.
+      if (comment.is_verified) await notifyCommentPublished(supabase, [comment.id]);
 
       const message = user
         ? "Comment posted successfully!"
