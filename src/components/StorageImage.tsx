@@ -36,9 +36,13 @@ export default function StorageImage({ bucket, path, title, alt, className, fall
       </div>
     )
   }
+  // A few rows hold a full URL rather than a storage path.
+  const src = /^https?:\/\//i.test(path) ? path : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl
   return (
     <img
-      src={supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl}
+      src={src}
+      loading="lazy"
+      decoding="async"
       alt={alt ?? title}
       className={className}
       onError={() => setFailedPath(path)}

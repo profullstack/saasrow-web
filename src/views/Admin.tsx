@@ -5,6 +5,7 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { Alert } from '../components/Alert'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import StorageImage from '../components/StorageImage'
 import { callFn } from '@/lib/clientApi'
 
 interface Submission {
@@ -957,6 +958,35 @@ export default function AdminPage() {
     }
   }
 
+  const approveAllComments = () => {
+    const pending = comments.filter(c => !c.is_verified).length
+    setConfirmDialog({
+      title: 'Approve All Comments',
+      message: `Approve all ${pending} pending comment${pending === 1 ? '' : 's'}?`,
+      onConfirm: async () => {
+        setConfirmDialog(null)
+        try {
+          const token = sessionStorage.getItem('adminToken')
+          const response = await callFn('moderate-comments', {
+            method: 'POST',
+            body: { action: 'approve_all' },
+            adminToken: token || '',
+          })
+          const result = await response.json()
+          if (response.ok) {
+            setAlertMessage({ type: 'success', message: `Approved ${result.approved} comment${result.approved === 1 ? '' : 's'}` })
+            fetchComments()
+          } else {
+            setAlertMessage({ type: 'error', message: result.error || 'Failed to approve comments' })
+          }
+        } catch (error) {
+          console.error('Failed to approve all comments:', error)
+          setAlertMessage({ type: 'error', message: 'Failed to approve comments' })
+        }
+      }
+    })
+  }
+
   const performSendNewsletter = async (subject: string, content: string, subscriberCount: number) => {
     setSendingNewsletter(true)
     try {
@@ -1359,13 +1389,13 @@ export default function AdminPage() {
                   <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
                     {submission.logo && (
                       <div className="flex-shrink-0">
-                        <img
-                          src={submission.logo}
+                        <StorageImage
+                          bucket="software-logos"
+                          path={submission.logo}
+                          title={submission.title}
                           alt={`${submission.title} logo`}
                           className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-white p-2 object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                          }}
+                          fallbackClassName="w-12 h-12 sm:w-16 sm:h-16 rounded-lg"
                         />
                       </div>
                     )}
@@ -2212,13 +2242,13 @@ export default function AdminPage() {
                                     <div className="flex-1">
                                       <div className="flex items-center gap-3 mb-2">
                                         {submission.logo && (
-                                          <img
-                                            src={submission.logo}
+                                          <StorageImage
+                                            bucket="software-logos"
+                                            path={submission.logo}
+                                            title={submission.title}
                                             alt={`${submission.title} logo`}
                                             className="w-10 h-10 rounded-lg bg-white p-1 object-contain"
-                                            onError={(e) => {
-                                              e.currentTarget.style.display = 'none'
-                                            }}
+                                            fallbackClassName="w-10 h-10 rounded-lg"
                                           />
                                         )}
                                         <div className="flex-1">
@@ -2316,12 +2346,22 @@ export default function AdminPage() {
                       Review and approve pending comments
                     </p>
                   </div>
-                  <button
-                    onClick={fetchComments}
-                    className="px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu font-bold hover:bg-[#4FFFE3]/30 transition-colors text-sm sm:text-base whitespace-nowrap"
-                  >
-                    Refresh
-                  </button>
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
+                    {comments.some(c => !c.is_verified) && (
+                      <button
+                        onClick={approveAllComments}
+                        className="px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-green-500/20 text-green-400 border border-green-500 font-ubuntu font-bold hover:bg-green-500/30 transition-colors text-sm sm:text-base whitespace-nowrap"
+                      >
+                        Approve All ({comments.filter(c => !c.is_verified).length})
+                      </button>
+                    )}
+                    <button
+                      onClick={fetchComments}
+                      className="px-4 sm:px-6 py-2 sm:py-3 rounded-full bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu font-bold hover:bg-[#4FFFE3]/30 transition-colors text-sm sm:text-base whitespace-nowrap"
+                    >
+                      Refresh
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
