@@ -83,6 +83,33 @@ Deno.serve(async (req: Request) => {
       const body = await req.json();
       const { commentId, action } = body;
 
+      // Every pending comment at once, not just the rows the admin page loaded.
+      if (action === "approve_all") {
+        const { data, error } = await supabase
+          .from("comments")
+          .update({ is_verified: true })
+          .not("is_verified", "is", true)
+          .select("id");
+
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ message: "Comments approved successfully", approved: data?.length ?? 0 }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
       if (!commentId || !action) {
         return new Response(
           JSON.stringify({ error: "Missing commentId or action" }),
