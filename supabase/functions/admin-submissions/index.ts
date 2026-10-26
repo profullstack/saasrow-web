@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
+import { notifyListingApproved } from '../_shared/approvalNotify.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,14 @@ Deno.serve(async (req: Request) => {
         )
       }
 
+      // Read the old status first so the approval email goes out once, on the
+      // way into 'approved', not every time an approved row is re-saved.
+      const { data: before } = await supabase
+        .from('software_submissions')
+        .select('status')
+        .eq('id', id)
+        .maybeSingle()
+
       const updates: any = {}
       if (status) updates.status = status
       if (tier) updates.tier = tier
@@ -102,6 +111,12 @@ Deno.serve(async (req: Request) => {
         const runtime = (globalThis as any).EdgeRuntime
         if (runtime?.waitUntil) runtime.waitUntil(run)
         else await run
+
+        if (before?.status !== 'approved') {
+          const notify = notifyListingApproved(supabase, data.id)
+          if (runtime?.waitUntil) runtime.waitUntil(notify)
+          else await notify
+        }
       }
 
       return new Response(
