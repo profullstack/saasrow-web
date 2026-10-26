@@ -113,6 +113,15 @@ describe('acceptInvite', () => {
     expect(r.accepted).toBe(false)
     expect(rpc).not.toHaveBeenCalled()
   })
+  it('refuses a second invite for an account that already joined on one', async () => {
+    rpc.mockImplementation(async (fn: string) =>
+      fn === 'aff_invited_by' ? { data: 'u-alice', error: null } : { data: null, error: null },
+    )
+    const req = new Request('https://saasrow.com/api/v1/me/invites/accept')
+    const r = await acceptInvite({ userId: 'u-carol', email: 'carol@example.org' }, 'INV-AAAA-BBBB-CCCC', req)
+    expect(r).toEqual({ accepted: false, message: 'You have already joined on an invite.' })
+    expect(rpc.mock.calls.map((c) => c[0])).not.toContain('aff_claim_invite')
+  })
   it('refuses something that is not an invite code', async () => {
     const req = new Request('https://saasrow.com/')
     expect((await acceptInvite({ userId: 'u-carol', email: 'c' }, 'CR-AAAA-BBBB-CCCC-DDDD', req)).accepted).toBe(false)

@@ -348,6 +348,10 @@ export async function acceptInvite(user: { userId: string; email: string }, code
   if (!eligible.ok) return { accepted: false, message: eligible.reason }
 
   const aff = getAffiliates()
+  // One invite per account: the module lets a user redeem several (invitedBy
+  // keeps the first), which would let one new account collect a bonus from
+  // every inviter it can find.
+  if (await aff.invitedBy(user.userId)) return { accepted: false, message: 'You have already joined on an invite.' }
   const r = await aff.redeemInvite(code, user.userId)
   if (!r.ok) return { accepted: false, message: inviteReasonMessage(r.reason) }
 
