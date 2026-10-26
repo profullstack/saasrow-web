@@ -9,6 +9,7 @@ import {
   revokeApiKey,
 } from '@/lib/apiAuth'
 import { clearMemberCookie, setMemberCookie } from '@/lib/memberSession'
+import { afterSignIn } from '@/lib/credits'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,8 +29,9 @@ export async function POST(req: Request) {
     await redeemLoginCode(email, code)
     const user = await ensureUser(email)
     const created = await createApiKey(user.id, 'Website')
+    const invite = await afterSignIn(req, user, body.invite)
     return jsonResponse(
-      { email: user.email },
+      { email: user.email, ...(invite ? { invite } : {}) },
       { headers: { 'Set-Cookie': setMemberCookie({ apiKey: created.api_key }) } },
     )
   } catch (error) {

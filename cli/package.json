@@ -1,6 +1,6 @@
 {
   "name": "@profullstack/saasrow",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Command-line client for saasrow.com: search the software directory, and create and manage your free listings and API keys from the terminal.",
   "keywords": ["saasrow", "saas", "directory", "listing", "cli", "mcp", "agent"],

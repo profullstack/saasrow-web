@@ -10,6 +10,7 @@ import { BasicAnalytics } from '../components/BasicAnalytics'
 import { PremiumAnalytics } from '../components/PremiumAnalytics'
 import { ScreenshotGallery } from '../components/ScreenshotGallery'
 import { ApiKeysPanel } from '../components/ApiKeysPanel'
+import { RedeemCodePanel } from '../components/RedeemCodePanel'
 import { callFn } from '@/lib/clientApi'
 import { adoptManagementToken } from '@/lib/member'
 
@@ -566,6 +567,22 @@ export default function ManageListings() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {token && (
+            <div className="mb-6 space-y-3">
+              <RedeemCodePanel
+                managementToken={decodeURIComponent(token)}
+                onRedeemed={() => {
+                  fetchSubmissions()
+                  fetchSubscriptionInfo()
+                }}
+              />
+              <p className="text-white/60 font-ubuntu text-sm">
+                Know someone who should list here? <a href="/invites" className="text-[#4FFFE3] underline">Send an invite</a>:
+                you each get days of Premium when they join.
+              </p>
             </div>
           )}
 

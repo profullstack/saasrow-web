@@ -32,6 +32,11 @@ import { LISTING_LIMITS } from './listingInput'
 import type { ApiPrincipal } from './apiAuth'
 import { karmaRules, karmaSummary, leaderboard, redeemCredit } from './karma'
 import { KARMA_PER_CREDIT, parsePeriod } from './karmaRules'
+import { createInviteFor, inviteOverview, redeemCreditCode } from './credits'
+import { siteOriginFrom } from './inviteRules'
+
+const SITE_ORIGIN = 'https://saasrow.com'
+const mcpOrigin = (ctx: McpContext) => (ctx.request ? siteOriginFrom(ctx.request.headers) : SITE_ORIGIN)
 
 export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 export const DEFAULT_PROTOCOL_VERSION = '2025-06-18'
@@ -46,6 +51,8 @@ export interface JsonRpcRequest {
 /** Per-request context: who, if anyone, the caller authenticated as. */
 export interface McpContext {
   principal?: ApiPrincipal | null
+  /** The HTTP request, for links built from its host and the caller's address. */
+  request?: Request
 }
 
 type JsonRpcResult = { jsonrpc: '2.0'; id: string | number | null; result: unknown }
@@ -219,6 +226,30 @@ export const WRITE_TOOLS = [
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
+    name: 'redeem_credit_code',
+    description: `Redeem a SaaSRow credit code (CR-XXXX-XXXX-XXXX-XXXX) for days of Premium on your account. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: { code: { type: 'string', description: 'The credit code.' } },
+      required: ['code'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'my_invites',
+    description: `Your invites: how many are left, each one's status and bonus, and your affiliate link. ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'create_invite',
+    description: `Create one invite (3 per account). Returns the code and its link once; when the person joins you both get Premium days. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: { note: { type: 'string', description: 'Who it is for (only you see this).' } },
+      additionalProperties: false,
+    },
+  },
+  {
     name: 'redeem_karma_credit',
     description: `Spend one free Featured week (earned every ${KARMA_PER_CREDIT} karma) on one of your approved listings. ${AUTH_NOTE}`,
     inputSchema: {
@@ -305,6 +336,14 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
 
     case 'my_karma':
       return toolResult(await karmaSummary(principal, 20))
+    case 'redeem_credit_code': {
+      const r = await redeemCreditCode(principal, args.code)
+      return r.ok ? toolResult(r) : toolError(r.message)
+    }
+    case 'my_invites':
+      return toolResult(await inviteOverview(principal, mcpOrigin(ctx)))
+    case 'create_invite':
+      return toolResult(await createInviteFor(principal, args.note, ctx.request ?? new Request(SITE_ORIGIN), mcpOrigin(ctx)))
     case 'redeem_karma_credit':
       return toolResult(await redeemCredit(principal, args.listing_id))
 

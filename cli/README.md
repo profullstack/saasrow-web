@@ -81,6 +81,19 @@ claude mcp add --transport http saasrow https://www.saasrow.com/api/mcp \
   --header "Authorization: Bearer sr_…"
 ```
 
+## Credits and invites
+
+```sh
+saasrow redeem CR-XXXX-XXXX-XXXX-XXXX   # a credit code: days of Premium on your account
+saasrow invites                         # invites left (3 per account), their status, your link
+saasrow invites create "for Carol"      # prints a one-time /i/<code> link, once
+saasrow invites revoke <id>             # withdraw an unused invite
+saasrow invites accept INV-XXXX-XXXX-XXXX
+saasrow login --invite INV-XXXX-XXXX-XXXX   # join on an invite
+```
+
+When a new account joins on your invite and passes the spam checks, you both get 7 days of Premium.
+
 ## Directory
 
 ```bash
