@@ -240,7 +240,7 @@
 
     "@profullstack/emailer": ["@profullstack/emailer@1.0.3", "", {}, "sha512-VyAtCcfnSI6LOwJvWogCr3ZNmEsaZw+iuWrqnosLsdcKsbRyCrCmXigMNZJZEjlgYlR+lK//PwNPG+xtCFvWAw=="],
 
-    "@profullstack/footer": ["@profullstack/footer@0.3.0", "", { "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "profullstack-footer": "bin/profullstack-footer.js" } }, "sha512-T95BxnTLRWj0OdEZQwGQkHJCPSBs8VpDATyAIPUqomnC9IRMMvgLEFeION1HSqIvwgHgiC0vbs15ydZyFq99ew=="],
+    "@profullstack/footer": ["@profullstack/footer@0.4.0", "", { "peerDependencies": { "react": ">=18" }, "optionalPeers": ["react"], "bin": { "profullstack-footer": "bin/profullstack-footer.js" } }, "sha512-EJZnMUQmWDi9Gzx6BAjogloeaPFFSSCHtHJuC9dsXiOz8M87hfn6Z+Zx9AMYWk8s6xemPrPlkXKGB3PZugkcEA=="],
 
     "@profullstack/form-guard": ["@profullstack/form-guard@0.2.2", "", {}, "sha512-PnmlkyJoN5PtwHETU4aF/kAlFP2Sf32LIIy+PK+JP28svvo/IHyzQl4/zEzfIChR0eAUs+gVXUoHKqn9jU+Mpw=="],
 
