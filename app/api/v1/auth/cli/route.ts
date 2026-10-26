@@ -19,7 +19,8 @@ export async function POST(req: Request) {
     const email = normalizeEmail(body.email)
     if (!email) throw new ApiError(400, 'A valid email address is required')
 
-    const result = await callEdgeFunction('cli-login', { email })
+    const source = body.source === 'web' ? 'web' : 'cli'
+    const result = await callEdgeFunction('cli-login', { email, source })
     if (!result.ok) {
       const message =
         (result.json as { error?: string } | null)?.error ?? 'Could not send a login code'

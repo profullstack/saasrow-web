@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 import StorageImage from './StorageImage'
 import { callFn } from '@/lib/clientApi'
+import { castVote, loadMyVote, recordShare } from '@/lib/communityClient'
 import { BookmarkButton } from './BookmarkButton'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
@@ -34,7 +34,6 @@ interface SoftwareCardProps {
 export function SoftwareCard({ software }: SoftwareCardProps) {
   const isPremium = software.tier === 'premium'
   const isFeatured = software.tier === 'featured'
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userVote, setUserVote] = useState<'upvote' | 'downvote' | null>(null)
   const [upvotes, setUpvotes] = useState(software.upvotes || 0)
   const [downvotes, setDownvotes] = useState(software.downvotes || 0)
@@ -55,22 +54,7 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
   }, [software.upvotes, software.downvotes, software.share_count, software.last_share_reset])
 
   const checkAuthAndVote = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    setIsAuthenticated(!!session)
-
-    if (session) {
-      const res = await fetch('/api/votes/me?submissionId=' + software.id)
-      const { data } = await res.json()
-      if (data?.vote_type) {
-        setUserVote(data.vote_type as 'upvote' | 'downvote')
-      }
-    } else {
-      const anonymousVoteKey = `vote_${software.id}`
-      const savedVote = localStorage.getItem(anonymousVoteKey)
-      if (savedVote) {
-        setUserVote(savedVote as 'upvote' | 'downvote')
-      }
-    }
+    setUserVote(await loadMyVote(software.id))
   }
 
   const handleVote = async (voteType: 'upvote' | 'downvote', e: React.MouseEvent) => {
@@ -82,42 +66,18 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     setIsVoting(true)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const response = await callFn('vote', {
-        method: 'POST',
-        body: {
-          submissionId: software.id,
-          voteType,
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        trackEvent(analyticsEvents.VOTE_CAST, {
-          submission_id: software.id,
-          vote_type: result.voteType || 'removed',
-          is_authenticated: !!session,
-        });
-        setUserVote(result.voteType)
-        setUpvotes(result.upvotes)
-        setDownvotes(result.downvotes)
-
-        if (!session) {
-          const anonymousVoteKey = `vote_${software.id}`
-          if (result.voteType) {
-            localStorage.setItem(anonymousVoteKey, result.voteType)
-          } else {
-            localStorage.removeItem(anonymousVoteKey)
-          }
-        }
-      } else {
-        alert(result.error || 'Failed to vote')
-      }
+      const result = await castVote(software.id, voteType)
+      trackEvent(analyticsEvents.VOTE_CAST, {
+        submission_id: software.id,
+        vote_type: result.voteType || 'removed',
+        is_authenticated: result.member,
+      });
+      setUserVote(result.voteType)
+      setUpvotes(result.upvotes)
+      setDownvotes(result.downvotes)
     } catch (error) {
       console.error('Failed to vote:', error)
-      alert('Failed to vote')
+      alert(error instanceof Error ? error.message : 'Failed to vote')
     } finally {
       setIsVoting(false)
     }
@@ -189,15 +149,10 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
       setShowCopied(true)
       setTimeout(() => setShowCopied(false), 2000)
 
-      const response = await callFn('track-share', {
-        method: 'POST',
-        body: { submissionId: software.id },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
+      const result = await recordShare(software.id, 'copy')
+      if (result.shareCount !== undefined) {
         setShareCount(result.shareCount)
-        setIsTrending(result.isTrending)
+        setIsTrending(Boolean(result.isTrending))
       }
     } catch (error) {
       console.error('Failed to share:', error)

@@ -39,15 +39,33 @@ async function sha256Hex(input: string): Promise<string> {
     .join('')
 }
 
-function emailHtml(code: string): string {
+// The website's Sign in uses the same codes (source "web"); only the wording differs.
+function copyFor(source: string) {
+  return source === 'web'
+    ? {
+        title: 'SaaSRow sign-in',
+        lead: 'Enter this code on saasrow.com to finish signing in:',
+        unasked: 'If you did not try to sign in to SaaSRow',
+        subject: 'sign-in code',
+      }
+    : {
+        title: 'SaaSRow CLI login',
+        lead: 'Enter this code in your terminal to finish signing in:',
+        unasked: 'If you did not run <code>saasrow login</code>',
+        subject: 'CLI login code',
+      }
+}
+
+function emailHtml(code: string, source: string): string {
+  const copy = copyFor(source)
   return `<!DOCTYPE html>
 <html>
   <body style="margin:0;padding:40px 20px;background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
     <div style="max-width:520px;margin:0 auto;background:#1a1a1a;border:1px solid rgba(79,255,227,0.15);border-radius:20px;padding:40px;">
-      <p style="color:#4FFFE3;font-size:20px;font-weight:600;margin:0 0 24px;">SaaSRow CLI login</p>
-      <p style="color:#e0e0e0;font-size:16px;line-height:1.7;margin:0 0 20px;">Enter this code in your terminal to finish signing in:</p>
+      <p style="color:#4FFFE3;font-size:20px;font-weight:600;margin:0 0 24px;">${copy.title}</p>
+      <p style="color:#e0e0e0;font-size:16px;line-height:1.7;margin:0 0 20px;">${copy.lead}</p>
       <p style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:34px;letter-spacing:6px;color:#E0FF04;text-align:center;margin:0 0 24px;">${code}</p>
-      <p style="color:#a0a0a0;font-size:14px;line-height:1.7;margin:0;">It expires in 15 minutes and works once. If you did not run <code>saasrow login</code>, ignore this email — nothing happens without the code.</p>
+      <p style="color:#a0a0a0;font-size:14px;line-height:1.7;margin:0;">It expires in 15 minutes and works once. ${copy.unasked}, ignore this email — nothing happens without the code.</p>
     </div>
   </body>
 </html>`
@@ -58,7 +76,8 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
   try {
-    const { email: rawEmail } = await req.json().catch(() => ({}))
+    const { email: rawEmail, source: rawSource } = await req.json().catch(() => ({}))
+    const source = rawSource === 'web' ? 'web' : 'cli'
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : ''
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
       return json({ error: 'A valid email address is required' }, 400)
@@ -106,9 +125,9 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         from: 'SaaSRow <noreply@saasrow.com>',
         to: [email],
-        subject: `${code} is your SaaSRow CLI login code`,
-        html: emailHtml(code),
-        text: `Your SaaSRow CLI login code is ${code}. It expires in 15 minutes and works once.`,
+        subject: `${code} is your SaaSRow ${copyFor(source).subject}`,
+        html: emailHtml(code, source),
+        text: `Your SaaSRow ${copyFor(source).subject} is ${code}. It expires in 15 minutes and works once.`,
       }),
     })
     if (!resendResponse.ok) {

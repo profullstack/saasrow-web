@@ -6,6 +6,7 @@ import { Footer } from '../components/Footer'
 import type { CommunityPost } from '../lib/supabase'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 import { callFn } from '@/lib/clientApi'
+import { TopKarma } from '../components/TopKarma'
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([])
@@ -75,6 +76,8 @@ export default function CommunityPage() {
               Connect with other developers, share your experiences, and learn from the community
             </p>
           </div>
+
+          <TopKarma />
 
           {isLoading ? (
             <div className="text-center py-12">

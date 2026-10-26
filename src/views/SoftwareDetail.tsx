@@ -12,8 +12,10 @@ import { ScreenshotGallery } from '../components/ScreenshotGallery'
 import { Comments } from '../components/Comments'
 import { RelatedSoftware } from '../components/RelatedSoftware'
 import { BookmarkButton } from '../components/BookmarkButton'
-import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
+import { castVote, loadMyVote, recordShare } from '@/lib/communityClient'
+import type { ShareNetwork } from '@/lib/karmaRules'
+import { EarnKarmaNudge } from '../components/EarnKarmaNudge'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 import StorageImage from '../components/StorageImage'
 
@@ -70,22 +72,7 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
 
   const checkUserVote = async () => {
     if (!id) return
-
-    const { data: { session } } = await supabase.auth.getSession()
-
-    if (session) {
-      const res = await fetch('/api/votes/me?submissionId=' + id)
-      const { data } = await res.json()
-      if (data?.vote_type) {
-        setUserVote(data.vote_type as 'upvote' | 'downvote')
-      }
-    } else {
-      const anonymousVoteKey = `vote_${id}`
-      const savedVote = localStorage.getItem(anonymousVoteKey)
-      if (savedVote) {
-        setUserVote(savedVote as 'upvote' | 'downvote')
-      }
-    }
+    setUserVote(await loadMyVote(id))
   }
 
   const handleVote = async (voteType: 'upvote' | 'downvote') => {
@@ -94,37 +81,13 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
     setIsVoting(true)
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const response = await callFn('vote', {
-        method: 'POST',
-        body: {
-          submissionId: submission.id,
-          voteType,
-        },
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        setUserVote(result.voteType)
-        setUpvotes(result.upvotes)
-        setDownvotes(result.downvotes)
-
-        if (!session) {
-          const anonymousVoteKey = `vote_${submission.id}`
-          if (result.voteType) {
-            localStorage.setItem(anonymousVoteKey, result.voteType)
-          } else {
-            localStorage.removeItem(anonymousVoteKey)
-          }
-        }
-      } else {
-        setAlertMessage({ type: 'error', message: result.error || 'Failed to vote' })
-      }
+      const result = await castVote(submission.id, voteType)
+      setUserVote(result.voteType)
+      setUpvotes(result.upvotes)
+      setDownvotes(result.downvotes)
     } catch (error) {
       console.error('Failed to vote:', error)
-      setAlertMessage({ type: 'error', message: 'Failed to vote' })
+      setAlertMessage({ type: 'error', message: error instanceof Error ? error.message : 'Failed to vote' })
     } finally {
       setIsVoting(false)
     }
@@ -219,20 +182,38 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
       setShowCopied(true)
       setTimeout(() => setShowCopied(false), 2000)
 
-      const response = await callFn('track-share', {
-        method: 'POST',
-        body: { submissionId: submission.id },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
+      const result = await recordShare(submission.id, 'copy')
+      if (result.shareCount !== undefined) {
         setShareCount(result.shareCount)
-        setIsTrending(result.isTrending)
+        setIsTrending(Boolean(result.isTrending))
       }
     } catch (error) {
       console.error('Failed to share:', error)
       setAlertMessage({ type: 'error', message: 'Failed to copy share link' })
     }
+  }
+
+  // The network buttons: count and pay the share, then open the network's composer.
+  const shareTo = (network: Exclude<ShareNetwork, 'copy'>) => {
+    if (!submission) return
+    const shareUrl = `${window.location.origin}/software/${submission.id}?ref=${network}`
+    const text = `${submission.title} on SaaSRow`
+    const u = encodeURIComponent(shareUrl)
+    const t = encodeURIComponent(text)
+    const intents: Record<typeof network, string> = {
+      x: `https://x.com/intent/post?text=${t}&url=${u}`,
+      bluesky: `https://bsky.app/intent/compose?text=${encodeURIComponent(`${text} ${shareUrl}`)}`,
+      linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${u}`,
+      reddit: `https://www.reddit.com/submit?url=${u}&title=${t}`,
+      hn: `https://news.ycombinator.com/submitlink?u=${u}&t=${t}`,
+    }
+    window.open(intents[network], '_blank', 'noopener,noreferrer')
+    recordShare(submission.id, network).then((r) => {
+      if (r.shareCount !== undefined) {
+        setShareCount(r.shareCount)
+        setIsTrending(Boolean(r.isTrending))
+      }
+    })
   }
 
   const fetchSubmission = async () => {
@@ -441,6 +422,27 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
                     )}
                   </button>
                 </div>
+
+                <div className="flex flex-wrap items-center gap-2 mt-4">
+                  <span className="text-white/60 text-sm font-ubuntu mr-1">Share on</span>
+                  {([
+                    ['x', 'X'],
+                    ['bluesky', 'Bluesky'],
+                    ['linkedin', 'LinkedIn'],
+                    ['reddit', 'Reddit'],
+                    ['hn', 'Hacker News'],
+                  ] as const).map(([network, label]) => (
+                    <button
+                      key={network}
+                      onClick={() => shareTo(network)}
+                      className="px-3 py-1.5 rounded-full bg-[#3a3a3a] text-white/90 text-sm font-ubuntu hover:bg-[#4a4a4a] transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <EarnKarmaNudge />
               </div>
 
               <AdUnit />

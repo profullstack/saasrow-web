@@ -39,6 +39,12 @@ API keys (require login)
   keys rename <id|prefix> <name>
   keys revoke <id|prefix> [--yes]
 
+Karma
+  karma                                     your karma, badges and free Featured weeks (login)
+  karma redeem <listing id>                 spend a free Featured week on your listing (login)
+  karma rules                               how karma is earned
+  leaderboard [--period week|month|all] [--limit n]
+
 Directory (no login needed)
   search <query> [--category …] [--use-case …] [--audience …] [--platform …]
                  [--pricing-model …] [--alternative-to …] [--sort recent|popular|views] [--limit n]
@@ -326,7 +332,69 @@ async function vocabulary({ client, flags, io }) {
   return 0
 }
 
-const COMMANDS = { login, logout, whoami, keys, listings, search, categories, vocabulary }
+// ---------------------------------------------------------------------------
+
+async function karma({ client, positionals, flags, io }) {
+  const [sub, ...rest] = positionals
+  if (sub === 'rules') {
+    const result = await client.get('/api/v1/karma', { auth: false })
+    if (flags.json) return io.out(json(result)), 0
+    io.out(table(result.how_to_earn.map((r) => ({ ...r, points: `+${r.points}` })), [
+      { key: 'points', label: 'POINTS' },
+      { key: 'label', label: 'ACTION', max: 28 },
+      { key: 'rule', label: 'RULE', max: 70 },
+    ]))
+    io.out(`\nEvery ${result.per_credit} karma is a free Featured week.\n`)
+    return 0
+  }
+  needKey(client)
+  if (sub === 'redeem') {
+    const [id] = rest
+    if (!id) throw new UsageError('Usage: saasrow karma redeem <listing id>')
+    const result = await client.post('/api/v1/me/karma/redeem', { listing_id: id })
+    if (flags.json) return io.out(json(result)), 0
+    io.out(`Featured until ${date(result.featured_until)}. ${result.credits_left} free week(s) left.\n`)
+    return 0
+  }
+  if (sub) throw new UsageError(`Unknown karma command "${sub}". Try: karma, karma redeem <id>, karma rules.`)
+  const me = await client.get('/api/v1/me/karma')
+  if (flags.json) return io.out(json(me)), 0
+  io.out(`${me.total} karma (${me.week} in the last 7 days)${me.staff ? ' — staff account, earns nothing' : ''}\n`)
+  if (me.badges.length) io.out(`${me.badges.map((b) => `${b.emoji} ${b.label}`).join('  ')}\n`)
+  io.out(`Free Featured weeks: ${me.credits.available}. Next one at ${me.next_credit.at} (${me.next_credit.remaining} to go).\n`)
+  if (me.events.length) {
+    io.out('\n')
+    io.out(table(me.events.slice(0, 15).map((e) => ({
+      points: e.points >= 0 ? `+${e.points}` : String(e.points),
+      what: e.reversal ? `${e.label} (taken back)` : e.label,
+      product: e.product?.title ?? '',
+      at: date(e.at),
+    })), [
+      { key: 'points', label: 'POINTS' },
+      { key: 'what', label: 'FOR', max: 34 },
+      { key: 'product', label: 'PRODUCT', max: 30 },
+      { key: 'at', label: 'WHEN' },
+    ]))
+  }
+  return 0
+}
+
+async function leaderboard({ client, flags, io }) {
+  const result = await client.get('/api/v1/karma/leaderboard', {
+    query: { period: flags.period, limit: flags.limit },
+    auth: false,
+  })
+  if (flags.json) return io.out(json(result)), 0
+  if (result.rows.length === 0) return io.out(`Nobody has karma for ${result.period} yet.\n`), 0
+  io.out(table(result.rows, [
+    { key: 'rank', label: '#' },
+    { key: 'name', label: 'MEMBER', max: 32 },
+    { key: 'karma', label: 'KARMA' },
+  ]))
+  return 0
+}
+
+const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, search, categories, vocabulary }
 
 /**
  * @param {string[]} argv

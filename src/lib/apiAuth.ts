@@ -1,6 +1,7 @@
 import 'server-only'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { ApiError } from './publicApi'
+import { MEMBER_HEADER, readMemberCookie } from './memberSession'
 import {
   bearerToken,
   generateApiKey,
@@ -20,6 +21,8 @@ import {
 //  - `X-Management-Token: …`        the token from a /manage/{token} link, so
 //                                   the website's manage page can drive the
 //                                   same key-management endpoints.
+//  - the saasrow_member cookie        the website's signed-in member, read only
+//                                   with an X-Saasrow-Member header (memberSession.ts).
 //
 // Both resolve to a row in `users`. The read side of the API stays keyless.
 
@@ -152,6 +155,12 @@ export async function authenticate(req: Request): Promise<ApiPrincipal | null> {
   }
   const managementToken = req.headers.get('x-management-token')
   if (managementToken) return resolveManagementToken(managementToken.trim())
+  // The website's signed-in member: the HttpOnly cookie, only with our header.
+  if (req.headers.get(MEMBER_HEADER)) {
+    const cookie = readMemberCookie(req)
+    if (cookie && 'apiKey' in cookie) return looksLikeApiKey(cookie.apiKey) ? principalFromApiKey(cookie.apiKey) : null
+    if (cookie) return resolveManagementToken(cookie.managementToken)
+  }
   return null
 }
 

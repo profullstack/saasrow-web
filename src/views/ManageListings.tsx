@@ -11,6 +11,7 @@ import { PremiumAnalytics } from '../components/PremiumAnalytics'
 import { ScreenshotGallery } from '../components/ScreenshotGallery'
 import { ApiKeysPanel } from '../components/ApiKeysPanel'
 import { callFn } from '@/lib/clientApi'
+import { adoptManagementToken } from '@/lib/member'
 
 interface SocialLink {
   id?: string
@@ -100,6 +101,8 @@ export default function ManageListings() {
 
     fetchSubmissions()
     fetchSubscriptionInfo()
+    // Opening your manage link signs you in for karma too.
+    adoptManagementToken(decodeURIComponent(token))
   }, [token])
 
   const fetchSubmissions = async () => {

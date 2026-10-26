@@ -31,6 +31,19 @@ vi.mock('@/lib/listings', () => ({
   deleteOwnedListing: (...args: unknown[]) => deleteOwnedListing(...args),
 }))
 
+// Karma reads and writes go through Postgres functions; mocked like the rest.
+const karmaRules = vi.fn()
+const leaderboard = vi.fn()
+const karmaSummary = vi.fn()
+const redeemCredit = vi.fn()
+
+vi.mock('@/lib/karma', () => ({
+  karmaRules: (...args: unknown[]) => karmaRules(...args),
+  leaderboard: (...args: unknown[]) => leaderboard(...args),
+  karmaSummary: (...args: unknown[]) => karmaSummary(...args),
+  redeemCredit: (...args: unknown[]) => redeemCredit(...args),
+}))
+
 const { handleMcpMessage, TOOLS, DEFAULT_PROTOCOL_VERSION } = await import(
   '@/lib/mcpServer'
 )
@@ -137,8 +150,12 @@ describe('tools/list', () => {
       'get_my_listing',
       'get_product',
       'get_vocabulary',
+      'karma_leaderboard',
+      'karma_rules',
       'list_categories',
       'list_my_listings',
+      'my_karma',
+      'redeem_karma_credit',
       'search_products',
       'update_listing',
     ])
@@ -376,5 +393,34 @@ describe('tools/call get_vocabulary', () => {
       'pricing_models',
       'use_cases',
     ])
+  })
+})
+
+describe('karma tools', () => {
+  it('karma_leaderboard is open and clamps its arguments', async () => {
+    leaderboard.mockResolvedValue([{ rank: 1, player: 'abc', name: 'Ada', karma: 12 }])
+    const res = await handleMcpMessage({
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'karma_leaderboard', arguments: { period: 'decade', limit: 500 } },
+    })
+    expect(leaderboard).toHaveBeenCalledWith('week', 100)
+    expect(parseToolText(res)).toEqual({ period: 'week', rows: [{ rank: 1, player: 'abc', name: 'Ada', karma: 12 }] })
+  })
+
+  it('my_karma needs an API key', async () => {
+    const res = await handleMcpMessage({ id: 1, method: 'tools/call', params: { name: 'my_karma', arguments: {} } })
+    expect(resultOf(res).isError).toBe(true)
+    expect(karmaSummary).not.toHaveBeenCalled()
+  })
+
+  it('redeem_karma_credit passes the caller and listing through', async () => {
+    redeemCredit.mockResolvedValue({ featured: true, featured_until: '2026-11-02T00:00:00Z', credits_left: 0 })
+    const res = await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'redeem_karma_credit', arguments: { listing_id: 'l1' } } },
+      { principal },
+    )
+    expect(redeemCredit).toHaveBeenCalledWith(principal, 'l1')
+    expect(parseToolText(res).featured).toBe(true)
   })
 })

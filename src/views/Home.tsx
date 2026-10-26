@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { SearchSection } from '../components/SearchSection'
+import { EarnKarmaNudge } from '../components/EarnKarmaNudge'
 import { SoftwareListings } from '../components/SoftwareListings'
 import { Footer } from '../components/Footer'
 import { FloatingCTA } from '../components/FloatingCTA'
@@ -159,6 +160,9 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
           onSortChange={setSelectedSort}
           onClearAll={handleClearAll}
         />
+        <div className="w-full max-w-[1335px] mx-auto px-4 text-center">
+          <EarnKarmaNudge />
+        </div>
         <SoftwareListings
           searchQuery={searchQuery}
           selectedFilter={selectedFilter}

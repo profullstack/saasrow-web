@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Menu, X, Heart } from 'lucide-react'
+import { Menu, X, Heart, Zap } from 'lucide-react'
 import { callFn } from '@/lib/clientApi'
+import { requestSignInCode, useMember, verifySignInCode } from '@/lib/member'
 
 interface HeaderProps {
   isManagementPage?: boolean
@@ -19,11 +20,21 @@ export function Header({ isManagementPage = false }: HeaderProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [bookmarkCount, setBookmarkCount] = useState(0)
+  const [codeSent, setCodeSent] = useState(false)
+  const [code, setCode] = useState('')
+  const { member, karma } = useMember()
 
   useEffect(() => {
     updateBookmarkCount()
     window.addEventListener('storage', updateBookmarkCount)
     return () => window.removeEventListener('storage', updateBookmarkCount)
+  }, [])
+
+  // "Sign in" links elsewhere on the page (EarnKarmaNudge, Comments) open this dialog.
+  useEffect(() => {
+    const open = () => setShowSignIn(true)
+    window.addEventListener('saasrow-open-signin', open)
+    return () => window.removeEventListener('saasrow-open-signin', open)
   }, [])
 
   const updateBookmarkCount = () => {
@@ -39,38 +50,52 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     router.push('/')
   }
 
+  const closeSignIn = () => {
+    setShowSignIn(false)
+    setCodeSent(false)
+    setCode('')
+    setMessage(null)
+  }
+
+  // Step one: email a sign-in code (the same codes as `saasrow login`).
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setMessage(null)
-
     try {
-      const response = await callFn('send-management-link', {
-        method: 'POST',
-        body: { email },
-      })
+      if (!codeSent) {
+        await requestSignInCode(email)
+        setCodeSent(true)
+        setMessage({ type: 'success', text: 'Check your email for an 8-character code.' })
+      } else {
+        await verifySignInCode(email, code)
+        setMessage({ type: 'success', text: 'Signed in. Votes, comments and shares now earn karma.' })
+        setTimeout(closeSignIn, 1200)
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Something went wrong. Please try again.' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
+  // The old way in, still here for listing owners: a link to their manage page.
+  const handleManageLink = async () => {
+    if (!email) {
+      setMessage({ type: 'error', text: 'Enter your email first.' })
+      return
+    }
+    setIsSubmitting(true)
+    setMessage(null)
+    try {
+      const response = await callFn('send-management-link', { method: 'POST', body: { email } })
       const data = await response.json()
-
       if (response.ok) {
         setMessage({ type: 'success', text: 'Check your email for the management link!' })
-        setEmail('')
-
-        if (data.managementUrl) {
-          const localUrl = data.managementUrl.replace(/^https?:\/\/[^\/]+/, window.location.origin)
-          setTimeout(() => {
-            window.location.href = localUrl
-          }, 2000)
-        } else {
-          setTimeout(() => {
-            setShowSignIn(false)
-            setMessage(null)
-          }, 3000)
-        }
       } else {
         setMessage({ type: 'error', text: data.error || 'Failed to send link' })
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Something went wrong. Please try again.' })
     } finally {
       setIsSubmitting(false)
@@ -81,6 +106,7 @@ export function Header({ isManagementPage = false }: HeaderProps) {
     { id: 'apps', label: 'Apps', href: '/' },
     { id: 'categories', label: 'Categories', href: '/categories' },
     { id: 'tags', label: 'Tags', href: '/tags' },
+    { id: 'leaderboard', label: 'Leaderboard', href: '/leaderboard' },
     { id: 'blog', label: 'Blog', href: '/blog' },
     { id: 'developers', label: 'Developers', href: '/developers' },
   ]
@@ -147,6 +173,15 @@ export function Header({ isManagementPage = false }: HeaderProps) {
             >
               Logout
             </button>
+          ) : member ? (
+            <Link
+              href="/karma"
+              title="Your karma"
+              className="px-5 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl hover:bg-[#4FFFE3] hover:text-neutral-800 transition-all flex items-center gap-2"
+            >
+              <Zap className="w-5 h-5" />
+              <span className="font-bold">{karma ? karma.total.toLocaleString() : '…'}</span>
+            </Link>
           ) : (
             <button
               onClick={() => setShowSignIn(true)}
@@ -208,6 +243,14 @@ export function Header({ isManagementPage = false }: HeaderProps) {
             >
               Logout
             </button>
+          ) : member ? (
+            <Link
+              href="/karma"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block w-full text-center px-6 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl"
+            >
+              Your karma: {karma ? karma.total.toLocaleString() : '…'}
+            </Link>
           ) : (
             <button
               onClick={() => {
@@ -223,12 +266,12 @@ export function Header({ isManagementPage = false }: HeaderProps) {
       )}
 
       {showSignIn && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSignIn(false)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeSignIn}>
           <div className="bg-neutral-800 rounded-2xl p-8 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-white text-2xl font-bold font-ubuntu">Sign In</h2>
               <button
-                onClick={() => setShowSignIn(false)}
+                onClick={closeSignIn}
                 className="text-white hover:text-gray-300 text-2xl"
               >
                 ×
@@ -236,7 +279,8 @@ export function Header({ isManagementPage = false }: HeaderProps) {
             </div>
 
             <p className="text-white/70 mb-6 font-ubuntu">
-              Enter your email to receive a link to manage your listings
+              Sign in to earn karma: upvotes, reviews, comments and shares all count, and every 500
+              karma is a free Featured week for your product.
             </p>
 
             <form onSubmit={handleSignIn} className="space-y-4">
@@ -251,9 +295,30 @@ export function Header({ isManagementPage = false }: HeaderProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="w-full px-4 py-3 bg-[#4a4a4a] text-white rounded-lg outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu"
+                  disabled={codeSent}
+                  className="w-full px-4 py-3 bg-[#4a4a4a] text-white rounded-lg outline-none focus:ring-2 focus:ring-[#4FFFE3] font-ubuntu disabled:opacity-60"
                 />
               </div>
+
+              {codeSent && (
+                <div>
+                  <label htmlFor="signin-code" className="block text-white font-ubuntu mb-2">
+                    Code from the email
+                  </label>
+                  <input
+                    id="signin-code"
+                    type="text"
+                    inputMode="text"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    placeholder="ABCD-2345"
+                    required
+                    autoFocus
+                    className="w-full px-4 py-3 bg-[#4a4a4a] text-white rounded-lg outline-none focus:ring-2 focus:ring-[#4FFFE3] font-mono tracking-widest uppercase"
+                  />
+                </div>
+              )}
 
               {message && (
                 <div
@@ -278,7 +343,16 @@ export function Header({ isManagementPage = false }: HeaderProps) {
                 disabled={isSubmitting}
                 className="w-full py-3 rounded-full bg-gradient-to-b from-[#E0FF04] to-[#4FFFE3] text-neutral-800 font-ubuntu font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {isSubmitting ? 'Sending...' : 'Send Magic Link'}
+                {isSubmitting ? 'One moment...' : codeSent ? 'Sign in' : 'Email me a code'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleManageLink}
+                disabled={isSubmitting}
+                className="w-full text-center text-white/60 hover:text-white text-sm font-ubuntu underline disabled:opacity-50"
+              >
+                Listing owner? Email me my manage link instead
               </button>
             </form>
           </div>
