@@ -1,5 +1,4 @@
 import 'server-only'
-import { createHash } from 'node:crypto'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { callEdgeFunction } from './edgeProxy'
 import { ApiError } from './publicApi'
@@ -277,8 +276,11 @@ export async function topKarma(limit = 5) {
   return { period: 'all' as const, rows: await leaderboard('all', limit) }
 }
 
-function playerIdOf(userId: string): string {
-  return createHash('sha256').update(`saasrow-karma:${userId}`).digest('hex').slice(0, 12)
+/** The board's public id for a member: karma_player_id() in SQL, the one definition. */
+async function playerIdOf(userId: string): Promise<string> {
+  const { data, error } = await getSupabaseAdmin().rpc('karma_player_id', { p_user: userId })
+  if (error) throw new Error(`karma_player_id failed: ${error.message}`)
+  return data as string
 }
 
 /** Everything the /karma page shows: total, this week, credits, the next one, history. */
@@ -319,7 +321,7 @@ export async function karmaSummary(principal: ApiPrincipal, limit = 30) {
   const weekTotal = rows.filter((e) => e.created_at >= since).reduce((n, e) => n + e.points, 0)
   const labels = new Map(rules.map((r: { action: string; label: string }) => [r.action, r.label]))
 
-  const player = playerIdOf(principal.userId)
+  const player = await playerIdOf(principal.userId)
   const ranks: Partial<Record<Period, number>> = {
     week: week.find((r) => r.player === player)?.rank,
     all: all.find((r) => r.player === player)?.rank,

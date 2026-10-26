@@ -4,19 +4,17 @@ import { useEffect, useState } from 'react'
 
 // The website's member session: who is signed in, for karma.
 //
-// Sign in emails a one-time code (the same codes as `saasrow login`) and trades
-// it for an API key named "Website", kept in this browser. Opening a /manage
-// link also signs you in, with that link's token. Either credential resolves to
-// the same `users` row on the server (src/lib/apiAuth.ts).
+// Sign in emails a one-time code (the same codes as `saasrow login`); the
+// server trades it for a "Website" API key and keeps that in an HttpOnly cookie
+// (src/lib/memberSession.ts), so scripts on the page never see it. Opening a
+// /manage link signs you in the same way with that link's token. All this
+// browser keeps is the email, as a hint that a session exists.
 
 const STORAGE_KEY = 'saasrow_member'
 const CHANGED = 'saasrow-member-changed'
 
 export interface MemberCredential {
   email: string
-  apiKey?: string
-  keyId?: string
-  managementToken?: string
 }
 
 export interface KarmaSummary {
@@ -60,8 +58,10 @@ export interface KarmaPayout {
 export function getMember(): MemberCredential | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    const m = raw ? (JSON.parse(raw) as MemberCredential) : null
-    return m && (m.apiKey || m.managementToken) ? m : null
+    const m = raw ? (JSON.parse(raw) as Partial<MemberCredential> & Record<string, unknown>) : null
+    // Sessions from before the cookie kept the key here: drop them, sign in again.
+    if (!m?.email || 'apiKey' in m || 'managementToken' in m) return null
+    return { email: m.email }
   } catch {
     return null
   }
@@ -69,35 +69,37 @@ export function getMember(): MemberCredential | null {
 
 function setMember(m: MemberCredential | null) {
   try {
-    if (m) localStorage.setItem(STORAGE_KEY, JSON.stringify(m))
+    if (m) localStorage.setItem(STORAGE_KEY, JSON.stringify({ email: m.email }))
     else localStorage.removeItem(STORAGE_KEY)
   } catch {
-    // Storage blocked (private window): the session lasts only this page.
+    // Storage blocked (private window): the cookie still works, the hint does not.
   }
   window.dispatchEvent(new Event(CHANGED))
 }
 
-export function memberHeaders(m: MemberCredential | null = getMember()): Record<string, string> {
-  if (!m) return {}
-  if (m.apiKey) return { Authorization: `Bearer ${m.apiKey}` }
-  if (m.managementToken) return { 'X-Management-Token': m.managementToken }
-  return {}
+/** The header that lets the server read the member cookie (no cross-site form can send it). */
+export function memberHeaders(): Record<string, string> {
+  return { 'X-Saasrow-Member': '1' }
+}
+
+async function errorMessage(res: Response, fallback: string): Promise<string> {
+  const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string }
+  return typeof json.error === 'string' ? json.error : json.error?.message ?? fallback
 }
 
 /** fetch() against our own API as the signed-in member. Throws the API's message on failure. */
 export async function memberFetch<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(path, {
     method: init.method ?? 'GET',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', ...memberHeaders() },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   })
-  const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     if (res.status === 401) setMember(null)
-    const message = (json as { error?: { message?: string } | string }).error
-    throw new Error(typeof message === 'string' ? message : message?.message ?? 'Request failed')
+    throw new Error(await errorMessage(res, 'Request failed'))
   }
-  return json as T
+  return (await res.json()) as T
 }
 
 /** Step one: email a sign-in code. */
@@ -107,27 +109,19 @@ export async function requestSignInCode(email: string): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, source: 'web' }),
   })
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}))
-    throw new Error((json as { error?: { message?: string } }).error?.message ?? 'Could not send a code')
-  }
+  if (!res.ok) throw new Error(await errorMessage(res, 'Could not send a code'))
 }
 
-/** Step two: trade the code for a key, kept in this browser. */
+/** Step two: trade the code for a session cookie. */
 export async function verifySignInCode(email: string, code: string): Promise<MemberCredential> {
-  const res = await fetch('/api/v1/auth/cli/verify', {
+  const res = await fetch('/api/v1/auth/web', {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, code, key_name: 'Website' }),
+    body: JSON.stringify({ email, code }),
   })
-  const json = (await res.json().catch(() => ({}))) as {
-    api_key?: string
-    key?: { id: string }
-    user?: { email: string }
-    error?: { message?: string }
-  }
-  if (!res.ok || !json.api_key) throw new Error(json.error?.message ?? 'That code did not work')
-  const m = { email: json.user?.email ?? email, apiKey: json.api_key, keyId: json.key?.id }
+  if (!res.ok) throw new Error(await errorMessage(res, 'That code did not work'))
+  const m = { email: ((await res.json()) as { email: string }).email }
   setMember(m)
   return m
 }
@@ -135,20 +129,24 @@ export async function verifySignInCode(email: string, code: string): Promise<Mem
 /** A /manage link signs you in too, unless you already are. */
 export function adoptManagementToken(token: string) {
   if (!token || getMember()) return
-  fetch('/api/v1/me', { headers: { 'X-Management-Token': token } })
+  fetch('/api/v1/auth/web', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
     .then((r) => (r.ok ? r.json() : null))
-    .then((me: { user?: { email: string } } | null) => {
-      if (me?.user?.email) setMember({ email: me.user.email, managementToken: token })
+    .then((me: { email?: string } | null) => {
+      if (me?.email) setMember({ email: me.email })
     })
     .catch(() => undefined)
 }
 
-/** Forget this browser's session, and revoke its key so it cannot be reused. */
+/** Sign out: the server revokes the website key and clears the cookie. */
 export async function signOut() {
-  const m = getMember()
-  if (m?.apiKey && m.keyId) {
-    await fetch(`/api/v1/keys/${m.keyId}`, { method: 'DELETE', headers: memberHeaders(m) }).catch(() => undefined)
-  }
+  await fetch('/api/v1/auth/web', { method: 'DELETE', credentials: 'same-origin', headers: memberHeaders() }).catch(
+    () => undefined,
+  )
   setMember(null)
 }
 
