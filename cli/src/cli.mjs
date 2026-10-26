@@ -22,7 +22,8 @@ const HELP = `saasrow ${VERSION} — the saasrow.com directory from your termina
 Usage: saasrow <command> [options]
 
 Account
-  login [--email <e>] [--name <key name>]   sign in with an emailed code; creates an API key
+  login [--email <e>] [--name <key name>] [--invite <code>]
+                                            sign in with an emailed code; creates an API key
   logout [--revoke]                         forget the local key (and revoke it on the server)
   whoami                                    which account the current key belongs to
 
@@ -44,6 +45,13 @@ Karma
   karma redeem <listing id>                 spend a free Featured week on your listing (login)
   karma rules                               how karma is earned
   leaderboard [--period week|month|all] [--limit n]
+
+Credits and invites (require login)
+  redeem <code>                             redeem a credit code for days of Premium
+  invites                                   your invites, what is left, your affiliate link
+  invites create [note]                     create an invite; prints its link once
+  invites revoke <id>                       withdraw an unused invite
+  invites accept <code>                     accept an invite on a new account
 
 Directory (no login needed)
   search <query> [--category …] [--use-case …] [--audience …] [--platform …]
@@ -84,7 +92,8 @@ async function login({ client, flags, io, env }) {
   const email = flags.email || (await io.prompt('Email: '))
   if (!email || !email.includes('@')) throw new UsageError('An email address is required.')
 
-  await client.post('/api/v1/auth/cli', { email }, { auth: false })
+  const invite = flags.invite ? String(flags.invite) : undefined
+  await client.post('/api/v1/auth/cli', { email, ...(invite ? { invite } : {}) }, { auth: false })
   io.err(`We emailed a login code to ${email}. It expires in 15 minutes.\n`)
 
   const code = flags.code || (await io.prompt('Code: '))
@@ -93,9 +102,10 @@ async function login({ client, flags, io, env }) {
   const keyName = flags.name || `${hostname()} CLI`
   const result = await client.post(
     '/api/v1/auth/cli/verify',
-    { email, code, key_name: keyName },
+    { email, code, key_name: keyName, ...(invite ? { invite } : {}) },
     { auth: false },
   )
+  if (result.invite) io.err(`${result.invite.message}\n`)
 
   const config = loadConfig(env)
   const next = {
@@ -394,7 +404,64 @@ async function leaderboard({ client, flags, io }) {
   return 0
 }
 
-const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, search, categories, vocabulary }
+async function redeem({ client, positionals, flags, io }) {
+  needKey(client)
+  const [code] = positionals
+  if (!code) throw new UsageError('Usage: saasrow redeem <code>')
+  const result = await client.post('/api/v1/me/credits/redeem', { code })
+  if (flags.json) return io.out(json(result)), 0
+  const p = result.premium
+  const tail = p.lifetime ? ' You already have lifetime Premium.' : p.premium_until ? ` Premium until ${date(p.premium_until)}.` : ''
+  io.out(`Redeemed: ${result.days} days of Premium.${tail}\n`)
+  return 0
+}
+
+async function invites({ client, positionals, flags, io }) {
+  needKey(client)
+  const [sub, ...rest] = positionals
+  if (sub === 'create') {
+    const result = await client.post('/api/v1/me/invites', { note: rest.join(' ') })
+    if (flags.json) return io.out(json(result)), 0
+    io.out(`${result.url}\n`)
+    io.err(`Shown once. It works once and expires ${result.expires_at ? date(result.expires_at) : 'never'}. ${result.quota.left} invite(s) left.\n`)
+    return 0
+  }
+  if (sub === 'revoke') {
+    const [id] = rest
+    if (!id) throw new UsageError('Usage: saasrow invites revoke <id>')
+    const result = await client.delete(`/api/v1/me/invites/${encodeURIComponent(id)}`)
+    if (flags.json) return io.out(json(result)), 0
+    io.out(`Withdrawn. ${result.quota.left} invite(s) left.\n`)
+    return 0
+  }
+  if (sub === 'accept') {
+    const [code] = rest
+    if (!code) throw new UsageError('Usage: saasrow invites accept <code>')
+    const result = await client.post('/api/v1/me/invites/accept', { code })
+    if (flags.json) return io.out(json(result)), 0
+    io.out(`${result.message}\n`)
+    return 0
+  }
+  if (sub) throw new UsageError(`Unknown invites command "${sub}". Try: invites, invites create, invites revoke <id>, invites accept <code>.`)
+  const me = await client.get('/api/v1/me/invites')
+  if (flags.json) return io.out(json(me)), 0
+  io.out(`${me.quota.left} of ${me.quota.total} invites left. Each accepted invite gives you both ${me.bonus_days} days of Premium.\n`)
+  if (!me.can_send) io.out(`${me.can_send_reason}\n`)
+  if (me.invites.length) {
+    io.out('\n')
+    io.out(table(me.invites.map((i) => ({ ...i, bonus: i.bonus ?? '', created: date(i.created_at) })), [
+      { key: 'id', label: 'ID' },
+      { key: 'note', label: 'NOTE', max: 30 },
+      { key: 'status', label: 'STATUS' },
+      { key: 'bonus', label: 'BONUS' },
+      { key: 'created', label: 'CREATED' },
+    ]))
+  }
+  io.out(`\nYour link: ${me.affiliate_link}\n`)
+  return 0
+}
+
+const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, redeem, invites, search, categories, vocabulary }
 
 /**
  * @param {string[]} argv

@@ -44,6 +44,17 @@ vi.mock('@/lib/karma', () => ({
   redeemCredit: (...args: unknown[]) => redeemCredit(...args),
 }))
 
+// Credit codes and invites: server-only, mocked.
+const redeemCreditCode = vi.fn()
+const inviteOverview = vi.fn()
+const createInviteFor = vi.fn()
+
+vi.mock('@/lib/credits', () => ({
+  redeemCreditCode: (...args: unknown[]) => redeemCreditCode(...args),
+  inviteOverview: (...args: unknown[]) => inviteOverview(...args),
+  createInviteFor: (...args: unknown[]) => createInviteFor(...args),
+}))
+
 const { handleMcpMessage, TOOLS, DEFAULT_PROTOCOL_VERSION } = await import(
   '@/lib/mcpServer'
 )
@@ -145,6 +156,7 @@ describe('tools/list', () => {
     const res = await handleMcpMessage({ id: 1, method: 'tools/list' })
     const tools = resultOf(res).tools as Array<{ name: string; inputSchema: unknown }>
     expect(tools.map((t) => t.name).sort()).toEqual([
+      'create_invite',
       'create_listing',
       'delete_listing',
       'get_my_listing',
@@ -154,7 +166,9 @@ describe('tools/list', () => {
       'karma_rules',
       'list_categories',
       'list_my_listings',
+      'my_invites',
       'my_karma',
+      'redeem_credit_code',
       'redeem_karma_credit',
       'search_products',
       'update_listing',
@@ -422,5 +436,50 @@ describe('karma tools', () => {
     )
     expect(redeemCredit).toHaveBeenCalledWith(principal, 'l1')
     expect(parseToolText(res).featured).toBe(true)
+  })
+})
+
+describe('credit codes and invites over MCP', () => {
+  beforeEach(() => {
+    redeemCreditCode.mockReset()
+    inviteOverview.mockReset()
+    createInviteFor.mockReset()
+  })
+
+  it('redeem_credit_code needs an account', async () => {
+    const res = await handleMcpMessage({
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'redeem_credit_code', arguments: { code: 'CR-1' } },
+    })
+    expect((resultOf(res) as { isError?: boolean }).isError).toBe(true)
+    expect(redeemCreditCode).not.toHaveBeenCalled()
+  })
+
+  it('redeem_credit_code returns the grant, or the refusal as a tool error', async () => {
+    redeemCreditCode.mockResolvedValueOnce({ ok: true, unit: 'premium_days', days: 30, premium: { premium: true } })
+    const ok = await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'redeem_credit_code', arguments: { code: 'CR-AAAA' } } },
+      { principal },
+    )
+    expect(redeemCreditCode).toHaveBeenCalledWith(principal, 'CR-AAAA')
+    expect(parseToolText(ok).days).toBe(30)
+
+    redeemCreditCode.mockResolvedValueOnce({ ok: false, reason: 'used_up', message: 'That code has already been used.' })
+    const refused = await handleMcpMessage(
+      { id: 2, method: 'tools/call', params: { name: 'redeem_credit_code', arguments: { code: 'CR-AAAA' } } },
+      { principal },
+    )
+    expect((resultOf(refused) as { isError?: boolean }).isError).toBe(true)
+  })
+
+  it('create_invite builds links from the request host', async () => {
+    createInviteFor.mockResolvedValue({ id: 'i1', code: 'INV-1', url: 'x' })
+    const request = new Request('http://localhost:3000/api/mcp', { headers: { host: 'localhost:3000' } })
+    await handleMcpMessage(
+      { id: 1, method: 'tools/call', params: { name: 'create_invite', arguments: { note: 'for Carol' } } },
+      { principal, request },
+    )
+    expect(createInviteFor).toHaveBeenCalledWith(principal, 'for Carol', request, 'http://localhost:3000')
   })
 })

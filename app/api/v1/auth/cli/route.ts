@@ -1,6 +1,7 @@
 import { corsPreflight, errorResponse, errorToResponse, jsonResponse, readJsonBody, ApiError } from '@/lib/publicApi'
 import { normalizeEmail, LOGIN_CODE_TTL_SECONDS } from '@/lib/apiKeys'
 import { callEdgeFunction } from '@/lib/edgeProxy'
+import { savePendingInvite } from '@/lib/credits'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,10 @@ export async function POST(req: Request) {
       // 429 (too many codes) passes through; anything else is our problem.
       return errorResponse(message, result.status === 429 ? 429 : 502)
     }
+
+    // An invite (from /i/<code>) rides along with the emailed code, so it
+    // counts even when the code is entered in another browser.
+    if (body.invite) await savePendingInvite(email, body.invite).catch((e) => console.error('[auth/cli] invite', e))
 
     return jsonResponse({
       ok: true,

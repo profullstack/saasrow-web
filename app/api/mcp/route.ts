@@ -69,9 +69,9 @@ export async function POST(req: Request) {
 
   // A bad key is reported per tool call rather than as a transport error, so
   // a client with a stale key can still use the read tools.
-  let ctx: McpContext = {}
+  let ctx: McpContext = { request: req }
   try {
-    ctx = { principal: await authenticate(req) }
+    ctx = { principal: await authenticate(req), request: req }
   } catch (error) {
     console.error('[mcp] authentication failed', error)
   }

@@ -236,3 +236,67 @@ test('a 401 from the server hints at logging in again', async () => {
     h.cleanup()
   }
 })
+
+test('login --invite carries the invite through both steps and prints the outcome', async () => {
+  const h = harness({
+    'POST /api/v1/auth/cli': () => [200, { ok: true }],
+    'POST /api/v1/auth/cli/verify': () => [201, {
+      api_key: 'sr_new', key: { id: 'k1', prefix: 'sr_new' }, user: { id: 'u1', email: 'c@example.com' },
+      invite: { accepted: true, message: 'Invite accepted. You and your inviter each get 7 days of Premium.' },
+    }],
+  }, { answers: ['ABCD-2345'] })
+  try {
+    assert.equal(await h.run(['login', '--email', 'c@example.com', '--invite', 'INV-AAAA-BBBB-CCCC']), 0)
+    assert.equal(h.calls[0].body.invite, 'INV-AAAA-BBBB-CCCC')
+    assert.equal(h.calls[1].body.invite, 'INV-AAAA-BBBB-CCCC')
+    assert.match(h.err, /Invite accepted/)
+  } finally {
+    h.cleanup()
+  }
+})
+
+test('redeem posts the code and prints the Premium date', async () => {
+  const h = harness({
+    'POST /api/v1/me/credits/redeem': () => [200, { ok: true, days: 30, premium: { premium: true, lifetime: false, premium_until: '2026-11-25T00:00:00Z' } }],
+  }, { env: { SAASROW_API_KEY: 'sr_env' } })
+  try {
+    assert.equal(await h.run(['redeem', 'CR-AAAA-BBBB-CCCC-DDDD']), 0)
+    assert.equal(h.calls[0].body.code, 'CR-AAAA-BBBB-CCCC-DDDD')
+    assert.match(h.out, /30 days of Premium/)
+  } finally {
+    h.cleanup()
+  }
+})
+
+test('redeem shows the refusal and exits non-zero', async () => {
+  const h = harness({
+    'POST /api/v1/me/credits/redeem': () => [400, { error: { message: 'That code has already been used.' }, reason: 'used_up' }],
+  }, { env: { SAASROW_API_KEY: 'sr_env' } })
+  try {
+    assert.notEqual(await h.run(['redeem', 'CR-X']), 0)
+    assert.match(h.err, /already been used/)
+  } finally {
+    h.cleanup()
+  }
+})
+
+test('invites create prints the link once; invites lists them', async () => {
+  const h = harness({
+    'POST /api/v1/me/invites': (c) => [201, { id: 'i1', code: 'INV-AAAA-BBBB-CCCC', url: 'https://saasrow.com/i/INV-AAAA-BBBB-CCCC', expires_at: '2026-11-25T00:00:00Z', quota: { total: 3, used: 1, left: 2 }, note: c.body.note }],
+    'GET /api/v1/me/invites': () => [200, {
+      quota: { total: 3, used: 1, left: 2 }, can_send: true, can_send_reason: null, bonus_days: 7,
+      invites: [{ id: 'i1', note: 'for Carol', status: 'unused', bonus: null, created_at: '2026-10-26T00:00:00Z', expires_at: null }],
+      affiliate_link: 'https://saasrow.com/?ref=ABCD1234',
+    }],
+  }, { env: { SAASROW_API_KEY: 'sr_env' } })
+  try {
+    assert.equal(await h.run(['invites', 'create', 'for', 'Carol']), 0)
+    assert.equal(h.calls[0].body.note, 'for Carol')
+    assert.match(h.out, /\/i\/INV-AAAA-BBBB-CCCC/)
+    assert.equal(await h.run(['invites']), 0)
+    assert.match(h.out, /2 of 3 invites left/)
+    assert.match(h.out, /ref=ABCD1234/)
+  } finally {
+    h.cleanup()
+  }
+})

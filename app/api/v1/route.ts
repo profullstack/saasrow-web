@@ -113,7 +113,34 @@ export function GET() {
           url: `${base}/api/v1/auth/cli`,
           method: 'POST',
           description:
-            'POST {"email"} emails a one-time code. Then POST {"email","code","key_name"} to /api/v1/auth/cli/verify to receive a new API key.',
+            'POST {"email"} emails a one-time code. Then POST {"email","code","key_name"} to /api/v1/auth/cli/verify to receive a new API key. Either step takes an optional "invite" code.',
+        },
+        redeem_credit_code: {
+          url: `${base}/api/v1/me/credits/redeem`,
+          method: 'POST',
+          authentication: 'required',
+          description:
+            'POST {"code"} redeems a credit code (CR-XXXX-XXXX-XXXX-XXXX) for days of Premium. A running term is extended; lifetime Premium stays lifetime.',
+        },
+        invites: {
+          url: `${base}/api/v1/me/invites`,
+          methods: ['GET', 'POST'],
+          authentication: 'required',
+          description:
+            'GET: your invite quota (3), invites and their bonus status, and your affiliate link. POST {"note"?} creates an invite; its code and /i/<code> link are returned exactly once.',
+        },
+        invite: {
+          url: `${base}/api/v1/me/invites/{id}`,
+          method: 'DELETE',
+          authentication: 'required',
+          description: 'Withdraw an unused invite; the slot comes back.',
+        },
+        accept_invite: {
+          url: `${base}/api/v1/me/invites/accept`,
+          method: 'POST',
+          authentication: 'required',
+          description:
+            'POST {"code"} accepts an invite on a new account. Both sides get 7 days of Premium once the account passes the spam checks.',
         },
       },
       mcp: {

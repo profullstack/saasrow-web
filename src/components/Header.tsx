@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { Menu, X, Heart, Zap } from 'lucide-react'
+import { Menu, X, Heart, Zap, Gift } from 'lucide-react'
 import { callFn } from '@/lib/clientApi'
 import { requestSignInCode, useMember, verifySignInCode } from '@/lib/member'
 
@@ -68,9 +68,12 @@ export function Header({ isManagementPage = false }: HeaderProps) {
         setCodeSent(true)
         setMessage({ type: 'success', text: 'Check your email for an 8-character code.' })
       } else {
-        await verifySignInCode(email, code)
-        setMessage({ type: 'success', text: 'Signed in. Votes, comments and shares now earn karma.' })
-        setTimeout(closeSignIn, 1200)
+        const signedIn = await verifySignInCode(email, code)
+        const text = signedIn.invite
+          ? `Signed in. ${signedIn.invite.message}`
+          : 'Signed in. Votes, comments and shares now earn karma.'
+        setMessage({ type: signedIn.invite && !signedIn.invite.accepted ? 'error' : 'success', text })
+        setTimeout(closeSignIn, signedIn.invite ? 3500 : 1200)
       }
     } catch (error) {
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Something went wrong. Please try again.' })
@@ -174,14 +177,24 @@ export function Header({ isManagementPage = false }: HeaderProps) {
               Logout
             </button>
           ) : member ? (
-            <Link
-              href="/karma"
-              title="Your karma"
-              className="px-5 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl hover:bg-[#4FFFE3] hover:text-neutral-800 transition-all flex items-center gap-2"
-            >
-              <Zap className="w-5 h-5" />
-              <span className="font-bold">{karma ? karma.total.toLocaleString() : '…'}</span>
-            </Link>
+            <>
+              <Link
+                href="/invites"
+                title="Your invites"
+                aria-label="Your invites"
+                className="p-3 rounded-full border-2 border-white/50 text-white hover:bg-white/10 transition-all flex items-center"
+              >
+                <Gift className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/karma"
+                title="Your karma"
+                className="px-5 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl hover:bg-[#4FFFE3] hover:text-neutral-800 transition-all flex items-center gap-2"
+              >
+                <Zap className="w-5 h-5" />
+                <span className="font-bold">{karma ? karma.total.toLocaleString() : '…'}</span>
+              </Link>
+            </>
           ) : (
             <button
               onClick={() => setShowSignIn(true)}
@@ -244,13 +257,23 @@ export function Header({ isManagementPage = false }: HeaderProps) {
               Logout
             </button>
           ) : member ? (
-            <Link
-              href="/karma"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block w-full text-center px-6 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl"
-            >
-              Your karma: {karma ? karma.total.toLocaleString() : '…'}
-            </Link>
+            <>
+              <Link
+                href="/karma"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-center px-6 py-3 rounded-full border-2 border-[#4FFFE3] text-[#4FFFE3] font-roboto text-xl"
+              >
+                Your karma: {karma ? karma.total.toLocaleString() : '…'}
+              </Link>
+              <Link
+                href="/invites"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block w-full text-center px-6 py-3 rounded-full border-2 border-white/50 text-white font-roboto text-xl flex items-center justify-center gap-2"
+              >
+                <Gift className="w-5 h-5" />
+                <span>Invites</span>
+              </Link>
+            </>
           ) : (
             <button
               onClick={() => {

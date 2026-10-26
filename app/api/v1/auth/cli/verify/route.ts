@@ -1,6 +1,7 @@
 import { corsPreflight, errorToResponse, jsonResponse, readJsonBody, ApiError } from '@/lib/publicApi'
 import { canonicalLoginCode, normalizeEmail } from '@/lib/apiKeys'
 import { createApiKey, ensureUser, redeemLoginCode } from '@/lib/apiAuth'
+import { afterSignIn } from '@/lib/credits'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,12 +25,14 @@ export async function POST(req: Request) {
     await redeemLoginCode(email, code)
     const user = await ensureUser(email)
     const created = await createApiKey(user.id, body.key_name ?? 'CLI')
+    const invite = await afterSignIn(req, user, body.invite)
 
     return jsonResponse(
       {
         api_key: created.api_key,
         key: created.key,
         user: { id: user.id, email: user.email },
+        ...(invite ? { invite } : {}),
       },
       { status: 201 },
     )

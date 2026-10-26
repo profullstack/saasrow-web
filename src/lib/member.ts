@@ -102,28 +102,74 @@ export async function memberFetch<T = unknown>(path: string, init: { method?: st
   return (await res.json()) as T
 }
 
+// An invite opened at /i/<code> waits here until the visitor signs in; it is
+// also sent with the emailed code, so the server keeps it for another browser.
+const INVITE_KEY = 'saasrow_invite'
+/** Fired with the InviteOutcome when a sign-in accepted (or refused) a waiting invite. */
+export const INVITE_RESULT = 'saasrow-invite-result'
+
+export function rememberInvite(code: string) {
+  try {
+    localStorage.setItem(INVITE_KEY, code)
+  } catch {
+    // Storage blocked: the sign-in request still carries it from the page.
+  }
+}
+
+export function pendingInvite(): string | null {
+  try {
+    return localStorage.getItem(INVITE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function clearInvite() {
+  try {
+    localStorage.removeItem(INVITE_KEY)
+  } catch {
+    // nothing to clear
+  }
+}
+
+export interface InviteOutcome {
+  accepted: boolean
+  message: string
+  bonus?: { paid: boolean; days?: number; reason?: string }
+}
+
 /** Step one: email a sign-in code. */
 export async function requestSignInCode(email: string): Promise<void> {
+  const invite = pendingInvite()
   const res = await fetch('/api/v1/auth/cli', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, source: 'web' }),
+    body: JSON.stringify({ email, source: 'web', ...(invite ? { invite } : {}) }),
   })
   if (!res.ok) throw new Error(await errorMessage(res, 'Could not send a code'))
 }
 
-/** Step two: trade the code for a session cookie. */
-export async function verifySignInCode(email: string, code: string): Promise<MemberCredential> {
+/** Step two: trade the code for a session cookie. Accepts a waiting invite too. */
+export async function verifySignInCode(
+  email: string,
+  code: string,
+): Promise<MemberCredential & { invite?: InviteOutcome }> {
+  const invite = pendingInvite()
   const res = await fetch('/api/v1/auth/web', {
     method: 'POST',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, code }),
+    body: JSON.stringify({ email, code, ...(invite ? { invite } : {}) }),
   })
   if (!res.ok) throw new Error(await errorMessage(res, 'That code did not work'))
-  const m = { email: ((await res.json()) as { email: string }).email }
+  const json = (await res.json()) as { email: string; invite?: InviteOutcome }
+  if (json.invite) {
+    clearInvite()
+    window.dispatchEvent(new CustomEvent<InviteOutcome>(INVITE_RESULT, { detail: json.invite }))
+  }
+  const m = { email: json.email }
   setMember(m)
-  return m
+  return { ...m, invite: json.invite }
 }
 
 /** A /manage link signs you in too, unless you already are. */
