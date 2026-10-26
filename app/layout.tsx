@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { Footer as PfsFooter } from '@profullstack/footer/react'
 import { FooterBottomProvider } from '@/components/FooterBottom'
 import { PitFooter } from '@/components/PitFooter'
+import { KarmaToast } from '@/components/KarmaToast'
 import JsonLd from '@/components/JsonLd'
 import { websiteLd, organizationLd } from '@/lib/structuredData'
 import './globals.css'
@@ -73,6 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           >
             {children}
           </FooterBottomProvider>
+          <KarmaToast />
         </ReferralProvider>
         <Script
           src="https://analytics.ahrefs.com/analytics.js"

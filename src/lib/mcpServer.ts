@@ -30,6 +30,8 @@ import { siteUrl } from './structuredData'
 import { ApiError } from './publicApi'
 import { LISTING_LIMITS } from './listingInput'
 import type { ApiPrincipal } from './apiAuth'
+import { karmaRules, karmaSummary, leaderboard, redeemCredit } from './karma'
+import { KARMA_PER_CREDIT, parsePeriod } from './karmaRules'
 
 export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']
 export const DEFAULT_PROTOCOL_VERSION = '2025-06-18'
@@ -143,6 +145,23 @@ export const READ_TOOLS = [
       'List the controlled vocabulary accepted by the use_case, audience, platform and pricing_model filters.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
+  {
+    name: 'karma_rules',
+    description: `How SaaSRow karma is earned (the same points as built.indie and pwamart). Every ${KARMA_PER_CREDIT} karma is a free Featured week for one of your listings.`,
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'karma_leaderboard',
+    description: 'The SaaSRow karma leaderboard: top members by karma for a period.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        period: { type: 'string', enum: ['week', 'month', 'all'], description: 'Default week.' },
+        limit: { type: 'number', description: 'Rows to return, 1-100 (default 10).' },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const
 
 const AUTH_NOTE =
@@ -191,6 +210,21 @@ export const WRITE_TOOLS = [
       type: 'object',
       properties: { id: { type: 'string', description: 'The listing id (uuid).' } },
       required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'my_karma',
+    description: `Your karma: total, last 7 days, badges, free Featured weeks and recent history. ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'redeem_karma_credit',
+    description: `Spend one free Featured week (earned every ${KARMA_PER_CREDIT} karma) on one of your approved listings. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: { listing_id: { type: 'string', description: 'The listing id (uuid).' } },
+      required: ['listing_id'],
       additionalProperties: false,
     },
   },
@@ -261,6 +295,19 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
     case 'get_vocabulary':
       return toolResult(vocabularyManifest())
 
+    case 'karma_rules':
+      return toolResult({ per_credit: KARMA_PER_CREDIT, how_to_earn: await karmaRules() })
+    case 'karma_leaderboard': {
+      const period = parsePeriod(args.period)
+      const limit = typeof args.limit === 'number' ? Math.min(Math.max(Math.floor(args.limit), 1), 100) : 10
+      return toolResult({ period, rows: await leaderboard(period, limit) })
+    }
+
+    case 'my_karma':
+      return toolResult(await karmaSummary(principal, 20))
+    case 'redeem_karma_credit':
+      return toolResult(await redeemCredit(principal, args.listing_id))
+
     case 'create_listing':
       return toolResult(await createListing(principal, args))
     case 'list_my_listings': {
@@ -317,7 +364,8 @@ export async function handleMcpMessage(
         serverInfo: { name: 'saasrow', version: '1.1.0', websiteUrl: siteUrl() },
         instructions:
           'SaaSRow is a directory of software and SaaS products. Use search_products to find tools by use case, audience, platform, pricing model, or as an alternative to a named competitor. Call get_vocabulary first if you need the exact filter terms. ' +
-          'With an API key you can also create_listing for a product you make and manage it with list_my_listings, update_listing and delete_listing.' +
+          'With an API key you can also create_listing for a product you make and manage it with list_my_listings, update_listing and delete_listing, and check my_karma. ' +
+          'karma_rules and karma_leaderboard explain and rank SaaSRow karma.' +
           who,
       })
     }

@@ -49,7 +49,8 @@ Deno.serve(async (req: Request) => {
 
       const { data: comments, error } = await supabase
         .from("comments")
-        .select("*")
+        // Never author_email or ip_address: this list is public.
+        .select("id, submission_id, author_name, content, rating, created_at, is_verified")
         .eq("submission_id", submissionId)
         .eq("is_verified", true)
         .order("created_at", { ascending: false });

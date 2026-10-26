@@ -83,6 +83,7 @@ export async function forwardToEdge(name: string, req: Request): Promise<Respons
 export async function callEdgeFunction(
   name: string,
   body: unknown,
+  extraHeaders: Record<string, string> = {},
 ): Promise<{ status: number; ok: boolean; json: unknown }> {
   const { url, jwt } = edgeConfig()
   const res = await fetch(`${url}/functions/v1/${name}`, {
@@ -91,6 +92,7 @@ export async function callEdgeFunction(
       Authorization: `Bearer ${jwt}`,
       apikey: jwt,
       'Content-Type': 'application/json',
+      ...extraHeaders,
     },
     body: JSON.stringify(body ?? {}),
   })

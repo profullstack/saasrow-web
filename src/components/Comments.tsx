@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { Alert } from './Alert'
-import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
+import { memberFetch, useMember, type KarmaPayout } from '@/lib/member'
+import { toastKarma } from '@/lib/communityClient'
+import { MIN_REVIEW_CHARS } from '@/lib/karmaRules'
+import { openSignIn } from './EarnKarmaNudge'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 
 interface Comment {
@@ -27,7 +30,8 @@ export function Comments({ submissionId }: CommentsProps) {
   const [averageRating, setAverageRating] = useState<number | null>(null)
   const [commentCount, setCommentCount] = useState(0)
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error' | 'info' | 'warning'; message: string } | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { member, karma } = useMember()
+  const isAuthenticated = !!member
 
   const [formData, setFormData] = useState({
     authorName: '',
@@ -38,13 +42,12 @@ export function Comments({ submissionId }: CommentsProps) {
 
   useEffect(() => {
     fetchComments()
-    checkAuth()
   }, [submissionId])
 
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    setIsAuthenticated(!!session)
-  }
+  // A member's saved display name fills the name field.
+  useEffect(() => {
+    if (karma?.display_name) setFormData((f) => (f.authorName ? f : { ...f, authorName: karma.display_name ?? '' }))
+  }, [karma?.display_name])
 
   const fetchComments = async () => {
     setLoading(true)
@@ -85,18 +88,39 @@ export function Comments({ submissionId }: CommentsProps) {
         setAlertMessage({ type: 'error', message: 'Please fill in all required fields' })
         return
       }
-    } else {
-      if (!formData.authorName || !formData.authorName.trim()) {
-        setAlertMessage({ type: 'error', message: 'Please enter your name' })
-        return
-      }
     }
 
     setSubmitting(true)
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
+    // Signed in: posted at once through the karma API, and paid.
+    if (member) {
+      try {
+        const result = await memberFetch<{ karma: KarmaPayout }>(`/api/v1/products/${submissionId}/comments`, {
+          method: 'POST',
+          body: {
+            content: formData.content,
+            rating: formData.rating > 0 ? formData.rating : null,
+            author_name: formData.authorName || undefined,
+          },
+        })
+        trackEvent(analyticsEvents.COMMENT_POSTED, {
+          submission_id: submissionId,
+          has_rating: formData.rating > 0,
+          is_authenticated: true,
+        });
+        toastKarma(result.karma)
+        setAlertMessage({ type: 'success', message: 'Posted!' })
+        setFormData({ authorName: formData.authorName, authorEmail: '', content: '', rating: 0 })
+        fetchComments()
+      } catch (error) {
+        setAlertMessage({ type: 'error', message: error instanceof Error ? error.message : 'Failed to submit comment' })
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
 
+    try {
       const response = await callFn('comments', {
         method: 'POST',
         body: {
@@ -114,15 +138,10 @@ export function Comments({ submissionId }: CommentsProps) {
         trackEvent(analyticsEvents.COMMENT_POSTED, {
           submission_id: submissionId,
           has_rating: formData.rating > 0,
-          is_authenticated: !!session,
+          is_authenticated: false,
         });
         setAlertMessage({ type: 'success', message: result.message || 'Comment posted!' })
         setFormData({ authorName: '', authorEmail: '', content: '', rating: 0 })
-        if (session) {
-          setTimeout(() => {
-            fetchComments()
-          }, 500)
-        }
       } else {
         setAlertMessage({ type: 'error', message: result.error || 'Failed to submit comment' })
       }
@@ -190,7 +209,17 @@ export function Comments({ submissionId }: CommentsProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="mb-8 pb-8 border-b border-white/10">
-        <h3 className="text-white text-lg font-ubuntu font-bold mb-4">Write a Review</h3>
+        <h3 className="text-white text-lg font-ubuntu font-bold mb-1">Write a Review</h3>
+        <p className="text-white/50 font-ubuntu text-sm mb-4">
+          {isAuthenticated ? (
+            <>A star rating and {MIN_REVIEW_CHARS}+ characters earns +5 karma (once per product); a comment earns +2.</>
+          ) : (
+            <>
+              <button type="button" onClick={openSignIn} className="text-[#4FFFE3] hover:underline">Sign in</button>
+              {' '}to post instantly and earn karma: +5 for a review, +2 for a comment. Signed-out reviews wait for approval.
+            </>
+          )}
+        </p>
 
         <div className="mb-4">
           <label className="block text-white/70 font-ubuntu text-sm mb-2">
