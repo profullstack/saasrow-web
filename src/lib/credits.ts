@@ -348,10 +348,12 @@ export async function acceptInvite(user: { userId: string; email: string }, code
   if (!eligible.ok) return { accepted: false, message: eligible.reason }
 
   const aff = getAffiliates()
-  // One invite per account: the module lets a user redeem several (invitedBy
-  // keeps the first), which would let one new account collect a bonus from
-  // every inviter it can find.
-  if (await aff.invitedBy(user.userId)) return { accepted: false, message: 'You have already joined on an invite.' }
+  // One invite per account. Since @profullstack/affiliates 0.3 the database
+  // enforces it atomically (aff_claim_invite + unique index
+  // aff_invites_one_per_user): a second or concurrent accept comes back
+  // `already_invited` without spending that invite. This pre-check only saves a
+  // round trip for the common case; it is not what makes it safe.
+  if (await aff.invitedBy(user.userId)) return { accepted: false, message: inviteReasonMessage('already_invited') }
   const r = await aff.redeemInvite(code, user.userId)
   if (!r.ok) return { accepted: false, message: inviteReasonMessage(r.reason) }
 
