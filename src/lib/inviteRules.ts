@@ -169,7 +169,7 @@ export function redeemReasonMessage(reason: RedeemReason): string {
   }
 }
 
-export type InviteReason = 'invalid' | 'expired' | 'used' | 'self' | 'revoked'
+export type InviteReason = 'invalid' | 'expired' | 'used' | 'self' | 'revoked' | 'already_invited'
 
 export function inviteReasonMessage(reason: InviteReason): string {
   switch (reason) {
@@ -183,5 +183,7 @@ export function inviteReasonMessage(reason: InviteReason): string {
       return 'You cannot accept your own invite.'
     case 'revoked':
       return 'That invite was withdrawn.'
+    case 'already_invited':
+      return 'You have already joined on an invite.'
   }
 }

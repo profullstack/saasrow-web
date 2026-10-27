@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@netlify/plugin-nextjs": "^5.16.4",
-    "@profullstack/affiliates": "^0.2.0",
+    "@profullstack/affiliates": "^0.3.0",
     "@profullstack/autoblog": "^0.4.0",
     "@profullstack/footer": "latest",
     "@profullstack/form-guard": "^0.2.2",

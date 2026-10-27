@@ -122,6 +122,22 @@ describe('acceptInvite', () => {
     expect(r).toEqual({ accepted: false, message: 'You have already joined on an invite.' })
     expect(rpc.mock.calls.map((c) => c[0])).not.toContain('aff_claim_invite')
   })
+  it('a concurrent accept that loses the claim is already_invited: no bonus row, invite left unused', async () => {
+    // invitedBy saw nothing yet (the other accept is in flight); the claim then
+    // loses to the unique index and the invite reads back still unused.
+    rpc.mockImplementation(async (fn: string) => {
+      if (fn === 'aff_get_invite_by_hash' || fn === 'aff_get_invite')
+        return { data: [{ id: 'inv2', code_hash: 'h', inviter_id: 'u-alice', created_at: Date.now() - day, expires_at: null, used_by: null, used_at: null, note: '', revoked_at: null }], error: null }
+      if (fn === 'aff_claim_invite') return { data: false, error: null }
+      return { data: null, error: null }
+    })
+    tables.invite_bonuses = []
+    const req = new Request('https://saasrow.com/api/v1/me/invites/accept')
+    const r = await acceptInvite({ userId: 'u-carol', email: 'carol@example.org' }, 'INV-AAAA-BBBB-CCCC', req)
+    expect(r).toEqual({ accepted: false, message: 'You have already joined on an invite.' })
+    expect(rpc.mock.calls.map((c) => c[0])).toContain('aff_claim_invite')
+    expect(rpc.mock.calls.map((c) => c[0])).not.toContain('settle_invite_bonus')
+  })
   it('refuses something that is not an invite code', async () => {
     const req = new Request('https://saasrow.com/')
     expect((await acceptInvite({ userId: 'u-carol', email: 'c' }, 'CR-AAAA-BBBB-CCCC-DDDD', req)).accepted).toBe(false)
