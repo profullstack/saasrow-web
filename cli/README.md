@@ -81,6 +81,29 @@ claude mcp add --transport http saasrow https://www.saasrow.com/api/mcp \
   --header "Authorization: Bearer sr_…"
 ```
 
+## Webhooks
+
+SaaSRow POSTs a signed event to your URL when your listings are approved,
+rejected, featured, upvoted or commented on, or your karma changes.
+
+```sh
+saasrow webhooks                                   # endpoints + the event types
+saasrow webhooks add https://you.example/hook product.upvoted product.commented
+                                                   # prints the signing secret once
+saasrow webhooks test wh_…                         # send webhook.test now
+saasrow webhooks log [wh_…]                        # recent deliveries
+saasrow webhooks update wh_… --events 'product.*' --disable
+saasrow webhooks rotate wh_…                       # new secret; the old one stops verifying
+saasrow webhooks rm wh_…
+```
+
+Events: `product.approved`, `product.rejected`, `product.featured`,
+`product.upvoted`, `product.commented`, `karma.changed`. Bodies are
+CloudEvents JSON (`type`, `time`, `subject`, `data`) with Standard Webhooks
+headers (`webhook-id`, `webhook-timestamp`, `webhook-signature`); verify them
+with `verifyAndParse` from `@profullstack/webhooks` and the secret. Failed
+deliveries retry with backoff for about three days.
+
 ## Credits and invites
 
 ```sh

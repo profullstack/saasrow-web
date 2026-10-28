@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { verifyAndParse } from '@profullstack/autoblog'
+import { verifyAutoblog } from '@/lib/autoblogReceiver'
 
 function slugify(text: string): string {
   return text
@@ -37,13 +37,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.text()
-    const headers = Object.fromEntries(req.headers)
-
-    const result = verifyAndParse({
-      headers,
-      body,
-      opts: { secret: config.webhook_secret },
-    })
+    const result = verifyAutoblog({ headers: req.headers, body, secret: config.webhook_secret })
 
     if (!result.ok) {
       return new Response(result.reason ?? 'Unauthorized', { status: result.status ?? 401 })

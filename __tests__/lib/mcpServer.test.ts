@@ -55,6 +55,12 @@ vi.mock('@/lib/credits', () => ({
   createInviteFor: (...args: unknown[]) => createInviteFor(...args),
 }))
 
+// Webhooks: the real hub on an in-memory store, so the tools run end to end.
+const webhookHub = vi.hoisted(() => ({ current: null as any }))
+vi.mock('@/lib/webhooks/hub', async (orig) => ({ ...(await orig<object>()), getHooks: () => webhookHub.current }))
+const { memoryStore } = await import('@profullstack/webhooks')
+const { createHooks } = await import('@/lib/webhooks/hub')
+
 const { handleMcpMessage, TOOLS, DEFAULT_PROTOCOL_VERSION } = await import(
   '@/lib/mcpServer'
 )
@@ -158,7 +164,9 @@ describe('tools/list', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([
       'create_invite',
       'create_listing',
+      'create_webhook',
       'delete_listing',
+      'delete_webhook',
       'get_my_listing',
       'get_product',
       'get_vocabulary',
@@ -166,12 +174,17 @@ describe('tools/list', () => {
       'karma_rules',
       'list_categories',
       'list_my_listings',
+      'list_webhooks',
       'my_invites',
       'my_karma',
       'redeem_credit_code',
       'redeem_karma_credit',
+      'rotate_webhook_secret',
       'search_products',
+      'test_webhook',
       'update_listing',
+      'update_webhook',
+      'webhook_deliveries',
     ])
     for (const tool of tools) expect(tool.inputSchema).toBeTruthy()
   })
@@ -481,5 +494,45 @@ describe('credit codes and invites over MCP', () => {
       { principal, request },
     )
     expect(createInviteFor).toHaveBeenCalledWith(principal, 'for Carol', request, 'http://localhost:3000')
+  })
+
+  describe('webhook tools', () => {
+    const call = (name: string, args: Record<string, unknown> = {}) =>
+      handleMcpMessage({ id: 1, method: 'tools/call', params: { name, arguments: args } }, { principal })
+
+    beforeEach(() => {
+      webhookHub.current = createHooks(memoryStore(), { log: () => {}, guard: { lookup: async () => ['93.184.216.34'] } })
+    })
+
+    it('creates, lists, rotates and deletes an endpoint for the caller', async () => {
+      const created = parseToolText(await call('create_webhook', { url: 'https://hooks.example.com/x', events: ['product.*'] }))
+      expect(created.secret).toMatch(/^whsec_/)
+      const id = created.endpoint.id
+
+      const listed = parseToolText(await call('list_webhooks'))
+      expect(listed.endpoints.map((e: { id: string }) => e.id)).toEqual([id])
+      expect(listed.event_types.map((e: { type: string }) => e.type)).toContain('karma.changed')
+      expect(await webhookHub.current.listEndpoints('u1')).toHaveLength(1)
+
+      const rotated = parseToolText(await call('rotate_webhook_secret', { id }))
+      expect(rotated.secret).not.toBe(created.secret)
+
+      const updated = parseToolText(await call('update_webhook', { id, enabled: false }))
+      expect(updated.enabled).toBe(false)
+
+      expect(parseToolText(await call('delete_webhook', { id }))).toEqual({ deleted: true })
+    })
+
+    it("turns the hub's own errors into tool errors", async () => {
+      const bad = await call('create_webhook', { url: 'https://hooks.example.com/x', events: ['nope.event'] })
+      expect(resultOf(bad).isError).toBe(true)
+      const missing = await call('test_webhook', { id: 'wh_missing' })
+      expect(resultOf(missing).isError).toBe(true)
+    })
+
+    it('needs an account', async () => {
+      const res = await handleMcpMessage({ id: 1, method: 'tools/call', params: { name: 'list_webhooks', arguments: {} } })
+      expect(resultOf(res).isError).toBe(true)
+    })
   })
 })

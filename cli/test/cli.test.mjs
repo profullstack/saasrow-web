@@ -300,3 +300,53 @@ test('invites create prints the link once; invites lists them', async () => {
     h.cleanup()
   }
 })
+
+test('webhooks: list, add, test, log and rm talk to /api/v1/webhooks', async () => {
+  const endpoint = { id: 'wh_1', url: 'https://hooks.example.com/x', events: ['product.*'], description: '', enabled: true, failures: 0, disabled_reason: null, created_at: '2026-10-28T00:00:00Z' }
+  const h = harness(
+    {
+      'GET /api/v1/webhooks': () => [200, { endpoints: [endpoint], event_types: ['product.approved', 'karma.changed'] }],
+      'POST /api/v1/webhooks': () => [201, { endpoint, secret: 'whsec_abc' }],
+      'POST /api/v1/webhooks/wh_1/test': () => [200, { ok: false, status: 500, error: 'HTTP 500', delivery_id: 'dlv_1' }],
+      'GET /api/v1/webhooks/deliveries': () => [200, { deliveries: [{ id: 'dlv_1', event_type: 'webhook.test', status: 'failed', attempts: 1, last_status: 500, last_error: 'HTTP 500', created_at: '2026-10-28T00:00:00Z' }] }],
+      'PATCH /api/v1/webhooks/wh_1': () => [200, { ...endpoint, enabled: false }],
+      'DELETE /api/v1/webhooks/wh_1': () => [200, { deleted: true }],
+    },
+    { env: { SAASROW_API_KEY: 'sr_test' } },
+  )
+  try {
+    assert.equal(await h.run(['webhooks']), 0)
+    assert.match(h.out, /wh_1/)
+    assert.match(h.out, /Events: product\.approved, karma\.changed/)
+
+    assert.equal(await h.run(['webhooks', 'add', 'https://hooks.example.com/x', 'product.*', '--description', 'ci']), 0)
+    assert.match(h.out, /whsec_abc/)
+    const post = h.calls.find((c) => c.method === 'POST' && c.path === '/api/v1/webhooks')
+    assert.deepEqual(post.body, { url: 'https://hooks.example.com/x', events: ['product.*'], description: 'ci' })
+    assert.equal(post.headers.Authorization, 'Bearer sr_test')
+
+    assert.equal(await h.run(['webhooks', 'test', 'wh_1']), 1)
+    assert.match(h.out, /Failed: HTTP 500/)
+
+    assert.equal(await h.run(['webhooks', 'log']), 0)
+    assert.match(h.out, /webhook\.test/)
+
+    assert.equal(await h.run(['webhooks', 'update', 'wh_1', '--disable']), 0)
+    assert.deepEqual(h.calls.at(-1).body, { enabled: false })
+
+    assert.equal(await h.run(['webhooks', 'rm', 'wh_1', '--yes']), 0)
+    assert.match(h.out, /Removed wh_1/)
+  } finally {
+    h.cleanup()
+  }
+})
+
+test('webhooks needs a key', async () => {
+  const h = harness({})
+  try {
+    assert.equal(await h.run(['webhooks']), 2)
+    assert.match(h.err, /Not logged in/)
+  } finally {
+    h.cleanup()
+  }
+})

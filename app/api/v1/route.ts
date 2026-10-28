@@ -2,6 +2,7 @@ import { jsonResponse, corsPreflight, API_VERSION } from '@/lib/publicApi'
 import { siteUrl } from '@/lib/structuredData'
 import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '@/lib/distribution'
 import { LISTING_LIMITS } from '@/lib/listingInput'
+import { WEBHOOK_EVENT_TYPES } from '@/lib/webhooks/events'
 
 export const dynamic = 'force-static'
 
@@ -108,6 +109,22 @@ export function GET() {
           methods: ['PATCH', 'DELETE'],
           authentication: 'required',
           description: 'PATCH {"name"} renames a key. DELETE revokes it immediately.',
+        },
+        webhooks: {
+          url: `${base}/api/v1/webhooks`,
+          methods: ['GET', 'POST'],
+          authentication: 'required',
+          description:
+            'Your webhook endpoints. GET lists them and event_types; POST {"url","events"?,"description"?} adds one and returns its signing secret once. SaaSRow POSTs CloudEvents signed with Standard Webhooks headers (webhook-id, webhook-timestamp, webhook-signature) for: ' +
+            WEBHOOK_EVENT_TYPES.join(', ') +
+            '. Failed deliveries retry with backoff for about three days.',
+        },
+        webhook: {
+          url: `${base}/api/v1/webhooks/{id}`,
+          methods: ['GET', 'PATCH', 'DELETE'],
+          authentication: 'required',
+          description:
+            'One endpoint. PATCH {"url"?,"events"?,"description"?,"enabled"?}. Also GET {id}/secret, POST {id}/rotate, POST {id}/test, GET {id}/deliveries, GET /api/v1/webhooks/deliveries, POST /api/v1/webhooks/deliveries/{delivery id}/retry.',
         },
         cli_login: {
           url: `${base}/api/v1/auth/cli`,

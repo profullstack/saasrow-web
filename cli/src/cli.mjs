@@ -3,7 +3,7 @@
 // and a scripted prompt.
 
 import { hostname } from 'node:os'
-import { parseArgs } from './args.mjs'
+import { parseArgs, listFlag } from './args.mjs'
 import { createClient, ApiClientError, VERSION } from './client.mjs'
 import {
   loadConfig,
@@ -45,6 +45,19 @@ Karma
   karma redeem <listing id>                 spend a free Featured week on your listing (login)
   karma rules                               how karma is earned
   leaderboard [--period week|month|all] [--limit n]
+
+Webhooks (require login)
+  webhooks                                  your endpoints and the events SaaSRow sends
+  webhooks add <url> [events…] [--description …]
+                                            POST signed events to your URL; prints the secret once
+  webhooks get <id>
+  webhooks update <id> [--url …] [--events a,b] [--description …] [--enable|--disable]
+  webhooks test <id>                        send a webhook.test event now
+  webhooks secret <id>                      print the signing secret
+  webhooks rotate <id> [--yes]              replace the secret (the old one stops verifying)
+  webhooks log [id] [--limit n]             recent deliveries
+  webhooks retry <delivery id>              send a delivery again
+  webhooks rm <id> [--yes]
 
 Credits and invites (require login)
   redeem <code>                             redeem a credit code for days of Premium
@@ -461,7 +474,138 @@ async function invites({ client, positionals, flags, io }) {
   return 0
 }
 
-const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, redeem, invites, search, categories, vocabulary }
+// ---------------------------------------------------------------------------
+
+const enc = encodeURIComponent
+
+function deliveryTable(rows) {
+  return table(rows, [
+    { key: (d) => date(d.created_at), label: 'DATE' },
+    { key: 'event_type', label: 'EVENT' },
+    { key: (d) => `${d.status}${d.last_status ? ` ${d.last_status}` : ''}`, label: 'STATUS' },
+    { key: 'attempts', label: 'TRIES' },
+    { key: (d) => d.last_error ?? '', label: 'ERROR', max: 40 },
+    { key: 'id', label: 'ID' },
+  ])
+}
+
+function endpointSummary(e) {
+  const lines = [
+    `${e.url}  [${e.enabled ? 'on' : `off${e.disabled_reason ? `: ${e.disabled_reason}` : ''}`}]`,
+    `  id:       ${e.id}`,
+    `  events:   ${e.events.join(', ')}`,
+  ]
+  if (e.description) lines.push(`  note:     ${e.description}`)
+  if (e.failures) lines.push(`  failures: ${e.failures} in a row`)
+  lines.push(`  created:  ${date(e.created_at)}`)
+  return `${lines.join('\n')}\n`
+}
+
+async function webhooks({ client, positionals, flags, io }) {
+  needKey(client)
+  const [sub, ...rest] = positionals
+  const need = (v, what) => {
+    if (!v) throw new UsageError(`Usage: saasrow webhooks ${sub} <${what}>`)
+    return v
+  }
+  const print = (result, human) => (flags.json ? io.out(json(result)) : io.out(human), 0)
+  switch (sub ?? 'list') {
+    case 'list':
+    case 'ls': {
+      const r = await client.get('/api/v1/webhooks')
+      if (flags.json) return io.out(json(r)), 0
+      if (r.endpoints.length === 0) io.out('No webhooks yet. Add one: saasrow webhooks add <https url> [events…]\n')
+      else {
+        io.out(
+          table(r.endpoints, [
+            { key: 'id', label: 'ID' },
+            { key: 'url', label: 'URL', max: 50 },
+            { key: 'events', label: 'EVENTS', max: 40 },
+            { key: (e) => (e.enabled ? 'on' : 'off'), label: 'STATUS' },
+          ]),
+        )
+      }
+      io.out(`\nEvents: ${r.event_types.join(', ')}\n`)
+      return 0
+    }
+    case 'add':
+    case 'create': {
+      const [url, ...events] = rest
+      need(url, 'https url')
+      const list = events.length ? events.flatMap((e) => e.split(',')).filter(Boolean) : listFlag(flags.events)
+      const body = { url }
+      if (list?.length) body.events = list
+      if (typeof flags.description === 'string') body.description = flags.description
+      const r = await client.post('/api/v1/webhooks', body)
+      if (flags.json) return io.out(json(r)), 0
+      io.out(`${r.secret}\n`)
+      io.err(`Added ${r.endpoint.id} -> ${r.endpoint.url} (${r.endpoint.events.join(', ')}). That is its signing secret; verify the webhook-signature header with it.\n`)
+      return 0
+    }
+    case 'get':
+    case 'show': {
+      const r = await client.get(`/api/v1/webhooks/${enc(need(rest[0], 'id'))}`)
+      return print(r, endpointSummary(r))
+    }
+    case 'update':
+    case 'edit': {
+      const id = need(rest[0], 'id')
+      const patch = {}
+      if (typeof flags.url === 'string') patch.url = flags.url
+      const events = listFlag(flags.events)
+      if (events) patch.events = events
+      if (typeof flags.description === 'string') patch.description = flags.description
+      if (flags.enable) patch.enabled = true
+      if (flags.disable) patch.enabled = false
+      if (!Object.keys(patch).length) throw new UsageError('Nothing to change. Pass --url, --events, --description, --enable or --disable.')
+      const r = await client.patch(`/api/v1/webhooks/${enc(id)}`, patch)
+      return print(r, endpointSummary(r))
+    }
+    case 'test': {
+      const r = await client.post(`/api/v1/webhooks/${enc(need(rest[0], 'id'))}/test`)
+      if (flags.json) return io.out(json(r)), 0
+      io.out(r.ok ? `Delivered (HTTP ${r.status}).\n` : `Failed: ${r.error ?? `HTTP ${r.status}`}.\n`)
+      return r.ok ? 0 : 1
+    }
+    case 'secret': {
+      const r = await client.get(`/api/v1/webhooks/${enc(need(rest[0], 'id'))}/secret`)
+      return print(r, `${r.secret}\n`)
+    }
+    case 'rotate': {
+      const id = need(rest[0], 'id')
+      if (!(await confirm(io, `Replace the signing secret of ${id}? The old one stops verifying immediately.`, flags))) {
+        return io.err('Cancelled.\n'), 1
+      }
+      const r = await client.post(`/api/v1/webhooks/${enc(id)}/rotate`)
+      return print(r, `${r.secret}\n`)
+    }
+    case 'log':
+    case 'deliveries': {
+      const query = flags.limit ? { limit: flags.limit } : undefined
+      const path = rest[0] ? `/api/v1/webhooks/${enc(rest[0])}/deliveries` : '/api/v1/webhooks/deliveries'
+      const r = await client.get(path, { query })
+      if (flags.json) return io.out(json(r)), 0
+      io.out(r.deliveries.length ? deliveryTable(r.deliveries) : 'No deliveries yet.\n')
+      return 0
+    }
+    case 'retry': {
+      const r = await client.post(`/api/v1/webhooks/deliveries/${enc(need(rest[0], 'delivery id'))}/retry`)
+      return print(r, `Queued ${r.id} (${r.event_type}) to send again.\n`)
+    }
+    case 'rm':
+    case 'remove':
+    case 'delete': {
+      const id = need(rest[0], 'id')
+      if (!(await confirm(io, `Remove webhook ${id} and its delivery log?`, flags))) return io.err('Cancelled.\n'), 1
+      const r = await client.delete(`/api/v1/webhooks/${enc(id)}`)
+      return print(r, `Removed ${id}.\n`)
+    }
+    default:
+      throw new UsageError(`Unknown webhooks command "${sub}". Try: list, add, get, update, test, secret, rotate, log, retry, rm.`)
+  }
+}
+
+const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, redeem, invites, webhooks, search, categories, vocabulary }
 
 /**
  * @param {string[]} argv
