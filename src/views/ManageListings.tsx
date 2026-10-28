@@ -10,6 +10,7 @@ import { BasicAnalytics } from '../components/BasicAnalytics'
 import { PremiumAnalytics } from '../components/PremiumAnalytics'
 import { ScreenshotGallery } from '../components/ScreenshotGallery'
 import { ApiKeysPanel } from '../components/ApiKeysPanel'
+import { WebhooksPanel } from '../components/WebhooksPanel'
 import { RedeemCodePanel } from '../components/RedeemCodePanel'
 import { callFn } from '@/lib/clientApi'
 import { adoptManagementToken } from '@/lib/member'
@@ -587,6 +588,8 @@ export default function ManageListings() {
           )}
 
           {token && <ApiKeysPanel managementToken={decodeURIComponent(token)} />}
+
+          {token && <WebhooksPanel managementToken={decodeURIComponent(token)} />}
 
           {showAddForm && (
             <div className="bg-[#2a2a2a] rounded-2xl border border-white/10 p-4 sm:p-6 lg:p-8 mb-6">

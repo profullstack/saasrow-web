@@ -2,7 +2,7 @@
 // positionals. No dependency, no magic; every command declares nothing and
 // reads what it needs from `flags`.
 
-const BOOLEAN_FLAGS = new Set(['json', 'yes', 'help', 'version', 'all', 'revoke'])
+const BOOLEAN_FLAGS = new Set(['json', 'yes', 'help', 'version', 'all', 'revoke', 'enable', 'disable'])
 
 const ALIASES = { y: 'yes', h: 'help', v: 'version' }
 

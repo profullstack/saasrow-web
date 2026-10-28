@@ -34,6 +34,8 @@ import { karmaRules, karmaSummary, leaderboard, redeemCredit } from './karma'
 import { KARMA_PER_CREDIT, parsePeriod } from './karmaRules'
 import { createInviteFor, inviteOverview, redeemCreditCode } from './credits'
 import { siteOriginFrom } from './inviteRules'
+import { WebhookError } from '@profullstack/webhooks'
+import { getHooks, WEBHOOK_EVENT_HELP, WEBHOOK_EVENT_TYPES } from './webhooks/hub'
 
 const SITE_ORIGIN = 'https://saasrow.com'
 const mcpOrigin = (ctx: McpContext) => (ctx.request ? siteOriginFrom(ctx.request.headers) : SITE_ORIGIN)
@@ -259,6 +261,72 @@ export const WRITE_TOOLS = [
       additionalProperties: false,
     },
   },
+  {
+    name: 'list_webhooks',
+    description: `Your webhook endpoints, and the events SaaSRow can send to them (${WEBHOOK_EVENT_TYPES.join(', ')}). ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: {}, additionalProperties: false },
+  },
+  {
+    name: 'create_webhook',
+    description: `Register an HTTPS URL that SaaSRow POSTs signed events to (Standard Webhooks, CloudEvents JSON) when your listings are approved, featured, upvoted or commented on, or your karma changes. Returns the signing secret once. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'Public https:// URL that receives the POSTs.' },
+        events: {
+          type: 'array',
+          items: { type: 'string' },
+          description: `Event types or patterns (product.*, *). Default all. One of: ${WEBHOOK_EVENT_TYPES.join(', ')}.`,
+        },
+        description: { type: 'string', description: 'A note for yourself.' },
+      },
+      required: ['url'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'update_webhook',
+    description: `Change a webhook endpoint's URL, events or description, or switch it on or off. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'The webhook endpoint id (wh_…).' },
+        url: { type: 'string' },
+        events: { type: 'array', items: { type: 'string' } },
+        description: { type: 'string' },
+        enabled: { type: 'boolean' },
+      },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'delete_webhook',
+    description: `Remove a webhook endpoint and its delivery log. ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'The webhook endpoint id (wh_…).' } }, required: ['id'], additionalProperties: false },
+  },
+  {
+    name: 'test_webhook',
+    description: `Send a webhook.test event to an endpoint now and report the HTTP status it answered. ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'The webhook endpoint id (wh_…).' } }, required: ['id'], additionalProperties: false },
+  },
+  {
+    name: 'rotate_webhook_secret',
+    description: `Replace an endpoint's signing secret; the old one stops verifying at once. Returns the new secret. ${AUTH_NOTE}`,
+    inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'The webhook endpoint id (wh_…).' } }, required: ['id'], additionalProperties: false },
+  },
+  {
+    name: 'webhook_deliveries',
+    description: `Recent webhook deliveries (status, attempts, last HTTP status), for one endpoint or all of them. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Only this endpoint (optional).' },
+        limit: { type: 'integer', minimum: 1, maximum: 200 },
+      },
+      additionalProperties: false,
+    },
+  },
 ] as const
 
 export const TOOLS = [...READ_TOOLS, ...WRITE_TOOLS] as const
@@ -369,6 +437,47 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
       await deleteOwnedListing(principal, id)
       return toolResult({ deleted: true, id })
     }
+    case 'list_webhooks':
+      return toolResult({
+        endpoints: await getHooks().listEndpoints(principal.userId),
+        event_types: WEBHOOK_EVENT_TYPES.map((type) => ({ type, when: WEBHOOK_EVENT_HELP[type] })),
+      })
+    case 'create_webhook':
+      return toolResult(
+        await getHooks().createEndpoint(principal.userId, {
+          url: String(args.url ?? ''),
+          events: args.events as string[] | string | undefined,
+          description: typeof args.description === 'string' ? args.description : undefined,
+        }),
+      )
+    case 'update_webhook': {
+      const id = requireId(args)
+      if (!id) return toolError('id is required')
+      const { id: _id, ...patch } = args
+      return toolResult(await getHooks().updateEndpoint(principal.userId, id, patch))
+    }
+    case 'delete_webhook': {
+      const id = requireId(args)
+      if (!id) return toolError('id is required')
+      return toolResult(await getHooks().deleteEndpoint(principal.userId, id))
+    }
+    case 'test_webhook': {
+      const id = requireId(args)
+      if (!id) return toolError('id is required')
+      return toolResult(await getHooks().test(principal.userId, id))
+    }
+    case 'rotate_webhook_secret': {
+      const id = requireId(args)
+      if (!id) return toolError('id is required')
+      return toolResult(await getHooks().rotateSecret(principal.userId, id))
+    }
+    case 'webhook_deliveries':
+      return toolResult({
+        deliveries: await getHooks().deliveries(principal.userId, {
+          endpointId: requireId(args) ?? undefined,
+          limit: typeof args.limit === 'number' ? args.limit : 50,
+        }),
+      })
     default:
       return toolError(`Unknown tool: ${name}`)
   }
@@ -400,7 +509,7 @@ export async function handleMcpMessage(
       return ok(id, {
         protocolVersion,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'saasrow', version: '1.1.0', websiteUrl: siteUrl() },
+        serverInfo: { name: 'saasrow', version: '1.2.0', websiteUrl: siteUrl() },
         instructions:
           'SaaSRow is a directory of software and SaaS products. Use search_products to find tools by use case, audience, platform, pricing model, or as an alternative to a named competitor. Call get_vocabulary first if you need the exact filter terms. ' +
           'With an API key you can also create_listing for a product you make and manage it with list_my_listings, update_listing and delete_listing, and check my_karma. ' +
@@ -422,7 +531,7 @@ export async function handleMcpMessage(
         return ok(id, await callTool(name, args, ctx))
       } catch (error) {
         // Validation, ownership and conflict errors are the caller's to fix.
-        if (error instanceof ApiError) return ok(id, toolError(error.message))
+        if (error instanceof ApiError || error instanceof WebhookError) return ok(id, toolError(error.message))
         console.error('[mcp] tool call failed', name, error)
         return ok(id, toolError(`Tool "${name}" failed.`))
       }
