@@ -1,3 +1,4 @@
+import PwaRegistration from './PwaRegistration';
 import type { Metadata, Viewport } from 'next'
 import { ReferralProvider } from '@profullstack/referrals/react';
 import Script from 'next/script'
@@ -15,6 +16,7 @@ const SITE_URL = 'https://saasrow.com'
 export const revalidate = 3600
 
 export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
   metadataBase: new URL(SITE_URL),
   title: {
     default: 'SaaSRow - Software Directory',
@@ -54,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <PwaRegistration />
         <ReferralProvider>
           <FooterBottomProvider
             bottom={
