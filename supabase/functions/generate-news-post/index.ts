@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.76.1";
+import { askC0mpute, c0mputeEnabled, jsonText } from "../_shared/c0mpute.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,9 +53,9 @@ Deno.serve(async (req: Request) => {
     const openAIKey = Deno.env.get('OPENAI_API_KEY');
     console.log('OpenAI key present:', !!openAIKey);
 
-    if (!openAIKey) {
+    if (!openAIKey && !c0mputeEnabled()) {
       return new Response(
-        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        JSON.stringify({ error: 'No AI provider configured (c0mpute disabled and no OPENAI_API_KEY)' }),
         {
           status: 500,
           headers: {
@@ -109,35 +110,57 @@ Return a JSON object with:
 - excerpt: A hook that makes people want to read more (120-160 characters)
 - content: Full HTML with <h2>, <p>, <ul>, <li> tags. Write like a human, not a content template.`;
 
-    console.log('Calling OpenAI API...');
-    const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an experienced tech blogger with a casual, authentic writing voice. Write like a real person sharing genuine insights, not like an AI following a template. Your writing should have personality and feel conversational. Always respond with valid JSON only.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.9,
-        response_format: { type: 'json_object' }
-      }),
-    });
+    const SYSTEM = 'You are an experienced tech blogger with a casual, authentic writing voice. Write like a real person sharing genuine insights, not like an AI following a template. Your writing should have personality and feel conversational. Always respond with valid JSON only.';
 
-    console.log('OpenAI response status:', openAIResponse.status);
+    // c0mpute first, then OpenAI as the paid fallback.
+    let generatedContent: { title?: string; excerpt?: string; content?: string } | null = null;
+    if (c0mputeEnabled()) {
+      try {
+        console.log('Calling c0mpute...');
+        const parsed = JSON.parse(jsonText(await askC0mpute({
+          system: SYSTEM,
+          user: prompt,
+          temperature: 0.9,
+          maxTokens: 1500,
+          feature: 'saasrow.generate-news-post',
+        })));
+        if (typeof parsed?.title === 'string' && typeof parsed?.content === 'string') generatedContent = parsed;
+        else console.error('c0mpute answer is missing title or content');
+      } catch (err) {
+        console.error('c0mpute failed:', err instanceof Error ? err.message : String(err));
+      }
+    }
 
-    if (!openAIResponse.ok) {
-      const errorText = await openAIResponse.text();
-      console.error('OpenAI API error:', openAIResponse.status, errorText);
+    if (!generatedContent && openAIKey) {
+      console.log('Calling OpenAI API...');
+      const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: prompt },
+          ],
+          temperature: 0.9,
+          response_format: { type: 'json_object' }
+        }),
+      });
+
+      console.log('OpenAI response status:', openAIResponse.status);
+      if (openAIResponse.ok) {
+        const openAIData = await openAIResponse.json();
+        generatedContent = JSON.parse(openAIData.choices[0].message.content);
+      } else {
+        const errorText = await openAIResponse.text();
+        console.error('OpenAI API error:', openAIResponse.status, errorText);
+      }
+    }
+
+    if (!generatedContent?.title) {
       return new Response(
         JSON.stringify({ error: 'Failed to generate content' }),
         {
@@ -150,10 +173,6 @@ Return a JSON object with:
       );
     }
 
-    console.log('Parsing OpenAI response...');
-    const openAIData = await openAIResponse.json();
-    console.log('OpenAI data received, parsing content...');
-    const generatedContent = JSON.parse(openAIData.choices[0].message.content);
     console.log('Generated content:', generatedContent.title);
 
     const slug = generatedContent.title
@@ -203,7 +222,7 @@ Return a JSON object with:
       }
     );
   } catch (error) {
-    console.error('Unexpected error:', error, error.message, error.stack);
+    console.error('Unexpected error:', error, error instanceof Error ? error.stack : '');
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       {

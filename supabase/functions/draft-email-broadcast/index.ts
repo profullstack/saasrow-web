@@ -1,8 +1,8 @@
 // Drafts an email broadcast (subject + markdown body) from the admin's description.
 // Admin-only; nothing is sent or stored, the page drops the draft into its form.
 //
-// Providers are tried in order, like fetch-metadata: OpenAI, then Gemini. A provider
-// with no key is skipped.
+// Providers are tried in order, like fetch-metadata: c0mpute, then OpenAI, then
+// Gemini. A provider with no key is skipped (c0mpute needs none).
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { requireAdmin } from '../_shared/adminAuth.ts'
 import {
@@ -13,6 +13,7 @@ import {
   type BroadcastAudience,
   type BroadcastDraft,
 } from '../_shared/broadcastDraft.ts'
+import { askC0mpute, c0mputeEnabled, jsonText } from '../_shared/c0mpute.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -84,11 +85,26 @@ Deno.serve(async (req: Request) => {
 
     const user = buildDraftUserPrompt(description, audience, { subject, content })
     const providers: Array<[string, () => Promise<string>]> = []
+    if (c0mputeEnabled()) {
+      providers.push([
+        'c0mpute',
+        async () =>
+          jsonText(
+            await askC0mpute({
+              system: DRAFT_SYSTEM_PROMPT,
+              user,
+              temperature: 0.7,
+              maxTokens: 1200,
+              feature: 'saasrow.draft-email-broadcast',
+            }),
+          ),
+      ])
+    }
     const openaiKey = Deno.env.get('OPENAI_API_KEY')
     const geminiKey = Deno.env.get('GEMINI_API_KEY')
     if (openaiKey) providers.push(['openai', () => askOpenAI(user, openaiKey)])
     if (geminiKey) providers.push(['gemini', () => askGemini(user, geminiKey)])
-    if (providers.length === 0) return json({ error: 'No AI provider configured (OPENAI_API_KEY or GEMINI_API_KEY)' }, 500)
+    if (providers.length === 0) return json({ error: 'No AI provider configured (c0mpute disabled, no OPENAI_API_KEY or GEMINI_API_KEY)' }, 500)
 
     let lastError = ''
     for (const [name, ask] of providers) {

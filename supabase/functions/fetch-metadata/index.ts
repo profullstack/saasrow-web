@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { OpenAI } from 'npm:openai@4.47.1'
+import { askC0mpute, c0mputeEnabled, jsonText } from '../_shared/c0mpute.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -213,8 +214,8 @@ async function askGemini(prompt: string, apiKey: string): Promise<string> {
 
 /**
  * Title, description, category and tags from a model. Providers are tried
- * in order and the first one that answers wins: OpenAI when it has credits,
- * otherwise Gemini. A provider with no key is skipped; if all fail we fall
+ * in order and the first one that answers wins: c0mpute (peer network, no
+ * vendor key), then OpenAI when it has credits, otherwise Gemini. A provider with no key is skipped; if all fail we fall
  * back to the page's own title and meta description rather than blocking
  * the submission.
  */
@@ -222,11 +223,20 @@ async function generateWithAI(url: string, metadata: MetaData): Promise<AiListin
   console.log('[AI] Starting AI generation for URL:', url)
   const prompt = buildPrompt(url, metadata)
   const providers: Array<[string, () => Promise<string>]> = []
+  // Shorter than the other functions: a listing submission waits on this,
+  // and the page's own metadata is an acceptable answer.
+  if (c0mputeEnabled()) {
+    providers.push([
+      'c0mpute',
+      async () =>
+        jsonText(await askC0mpute({ user: prompt, temperature: 0.7, maxTokens: 600, timeoutMs: 30_000, feature: 'saasrow.fetch-metadata' })),
+    ])
+  }
   const openaiKey = Deno.env.get('OPENAI_API_KEY')
   const geminiKey = Deno.env.get('GEMINI_API_KEY')
   if (openaiKey) providers.push(['openai', () => askOpenAI(prompt, openaiKey)])
   if (geminiKey) providers.push(['gemini', () => askGemini(prompt, geminiKey)])
-  if (providers.length === 0) console.warn('[AI] No OPENAI_API_KEY or GEMINI_API_KEY configured, falling back to metadata only')
+  if (providers.length === 0) console.warn('[AI] c0mpute disabled and no OPENAI_API_KEY or GEMINI_API_KEY configured, falling back to metadata only')
 
   for (const [name, ask] of providers) {
     try {
