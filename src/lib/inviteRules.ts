@@ -132,7 +132,7 @@ export function looksLikeInviteCode(value: unknown): value is string {
   return body.length === 12
 }
 
-const ALLOWED_HOSTS = /^(?:www\.)?saasrow\.com$|^localhost(?::\d+)?$|^127\.0\.0\.1(?::\d+)?$/
+const ALLOWED_HOSTS = /^(?:www\.)?saasrow\.com$|^saasrow\.pwa\.pit\.world$|^localhost(?::\d+)?$|^127\.0\.0\.1(?::\d+)?$/
 
 /**
  * The site origin for links we hand out, from the request's own host (so a
