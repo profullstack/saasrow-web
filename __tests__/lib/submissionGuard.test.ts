@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { screenSubmission } from '@/lib/submission-guard'
 
 const post = (ip: string, d: string, path = '/api/fn/submissions') =>
-  new Request(`https://saasrow.com${path}`, {
+  new Request(`https://saasrow.pwa.pit.world${path}`, {
     method: 'POST',
     headers: { 'x-real-ip': ip, 'content-type': 'application/json' },
     body: JSON.stringify({ title: d, url: `https://${d}.com`, email: `hello@${d}.com`, description: 'x', category: 'Software' }),
@@ -24,12 +24,12 @@ describe('screenSubmission', () => {
   })
 
   it('leaves reads and other routes alone', async () => {
-    expect(await screenSubmission(new Request('https://saasrow.com/api/fn/submissions'))).toBeNull()
+    expect(await screenSubmission(new Request('https://saasrow.pwa.pit.world/api/fn/submissions'))).toBeNull()
     expect(await screenSubmission(post('192.0.2.67', 'x', '/api/fn/vote'))).toBeNull()
   })
 
   it('passes a malformed body through to the edge function', async () => {
-    const r = new Request('https://saasrow.com/api/fn/submissions', { method: 'POST', body: 'not json' })
+    const r = new Request('https://saasrow.pwa.pit.world/api/fn/submissions', { method: 'POST', body: 'not json' })
     expect(await screenSubmission(r)).toBeNull()
   })
 })

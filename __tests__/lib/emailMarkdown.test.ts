@@ -41,10 +41,10 @@ describe('markdownToEmailHtml', () => {
   })
 
   it('renders markdown links and bare URLs', () => {
-    const html = markdownToEmailHtml('See [SaaSRow](https://saasrow.com) or https://saasrow.com/pricing')
-    expect(html).toContain('<a href="https://saasrow.com" style=')
+    const html = markdownToEmailHtml('See [SaaSRow](https://saasrow.pwa.pit.world) or https://saasrow.pwa.pit.world/pricing')
+    expect(html).toContain('<a href="https://saasrow.pwa.pit.world" style=')
     expect(html).toContain('>SaaSRow</a>')
-    expect(html).toContain('<a href="https://saasrow.com/pricing"')
+    expect(html).toContain('<a href="https://saasrow.pwa.pit.world/pricing"')
   })
 
   it('links bare email addresses with mailto', () => {
@@ -82,8 +82,8 @@ describe('markdownToEmailHtml', () => {
   })
 
   it('renders images', () => {
-    const html = markdownToEmailHtml('![logo](https://saasrow.com/logo.png)')
-    expect(html).toContain('<img src="https://saasrow.com/logo.png" alt="logo"')
+    const html = markdownToEmailHtml('![logo](https://saasrow.pwa.pit.world/logo.png)')
+    expect(html).toContain('<img src="https://saasrow.pwa.pit.world/logo.png" alt="logo"')
   })
 
   it('escapes pasted HTML instead of rendering it', () => {
@@ -114,9 +114,9 @@ describe('markdownToEmailHtml', () => {
 
 describe('markdownToPlainText', () => {
   it('strips markdown syntax but keeps the text readable', () => {
-    const text = markdownToPlainText('# Title\n\n**Bold** and [a link](https://saasrow.com)\n\n- one\n- two')
+    const text = markdownToPlainText('# Title\n\n**Bold** and [a link](https://saasrow.pwa.pit.world)\n\n- one\n- two')
     expect(text).toContain('Title')
-    expect(text).toContain('Bold and a link (https://saasrow.com)')
+    expect(text).toContain('Bold and a link (https://saasrow.pwa.pit.world)')
     expect(text).toContain('- one')
     expect(text).not.toContain('**')
     expect(text).not.toContain('#')
@@ -130,16 +130,16 @@ describe('markdownToPlainText', () => {
 describe('buildEmailParts', () => {
   const footer = [
     { text: 'You subscribed.' },
-    { text: 'Unsubscribe', href: 'https://saasrow.com/unsubscribe?email=a%40b.co' },
+    { text: 'Unsubscribe', href: 'https://saasrow.pwa.pit.world/unsubscribe?email=a%40b.co' },
   ]
 
   it('builds an HTML document and a matching text/plain part from one markdown source', () => {
-    const { html, text } = buildEmailParts({ markdown: '## Hi\n\nSee [the site](https://saasrow.com).', heading: 'SaaSRow', footer })
+    const { html, text } = buildEmailParts({ markdown: '## Hi\n\nSee [the site](https://saasrow.pwa.pit.world).', heading: 'SaaSRow', footer })
     expect(html.startsWith('<!DOCTYPE html>')).toBe(true)
     expect(html).toContain('>Hi</h2>')
-    expect(html).toContain('href="https://saasrow.com/unsubscribe?email=a%40b.co"')
-    expect(text).toContain('Hi\n\nSee the site (https://saasrow.com).')
-    expect(text).toContain('\n--\nYou subscribed.\nUnsubscribe: https://saasrow.com/unsubscribe?email=a%40b.co\n')
+    expect(html).toContain('href="https://saasrow.pwa.pit.world/unsubscribe?email=a%40b.co"')
+    expect(text).toContain('Hi\n\nSee the site (https://saasrow.pwa.pit.world).')
+    expect(text).toContain('\n--\nYou subscribed.\nUnsubscribe: https://saasrow.pwa.pit.world/unsubscribe?email=a%40b.co\n')
     expect(text).not.toContain('<')
   })
 

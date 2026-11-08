@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { clearMemberCookie, readMemberCookie, setMemberCookie } from '@/lib/memberSession'
 
-const req = (cookie?: string) => new Request('https://saasrow.com/', { headers: cookie ? { cookie } : {} })
+const req = (cookie?: string) => new Request('https://saasrow.pwa.pit.world/', { headers: cookie ? { cookie } : {} })
 const valueOf = (setCookie: string) => setCookie.split(';')[0]
 
 describe('member session cookie', () => {

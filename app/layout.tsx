@@ -8,7 +8,7 @@ import JsonLd from '@/components/JsonLd'
 import { websiteLd, organizationLd } from '@/lib/structuredData'
 import './globals.css'
 
-const SITE_URL = 'https://saasrow.com'
+const SITE_URL = 'https://saasrow.pwa.pit.world'
 
 // Re-render hourly so @profullstack/footer and the pit.world footer stay fresh.
 export const revalidate = 3600
@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <KarmaToast />
         </ReferralProvider>
         <PfsFooter
-          site="https://saasrow.com/"
+          site="https://saasrow.pwa.pit.world/"
           since={2025}
           links={[
             { label: 'About', href: '/about' },
@@ -81,7 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script
           src="https://datafa.st/js/script.js"
           data-website-id="dfid_ymwgZYB7fCWFQQX3c74DG"
-          data-domain="saasrow.com"
+          data-domain="saasrow.pwa.pit.world"
           strategy="afterInteractive"
           defer
         />

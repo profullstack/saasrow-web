@@ -113,8 +113,8 @@ describe('buildSessionRequest', () => {
     mode: 'subscription',
     interval: 'month',
     customer_email: ' Riotcoder+saasrow-cs-test@profullstack.com ',
-    success_url: 'https://saasrow.com/featured?success=true&session={CHECKOUT_SESSION_ID}',
-    cancel_url: 'https://saasrow.com/featured?cancelled=true',
+    success_url: 'https://saasrow.pwa.pit.world/featured?success=true&session={CHECKOUT_SESSION_ID}',
+    cancel_url: 'https://saasrow.pwa.pit.world/featured?cancelled=true',
   }
 
   it('prices on the server and sends the CoinPay contract fields', () => {

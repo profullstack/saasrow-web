@@ -139,10 +139,10 @@ const ALLOWED_HOSTS = /^(?:www\.)?saasrow\.com$|^localhost(?::\d+)?$|^127\.0\.0\
  * dev or preview host builds links to itself), falling back to the canonical
  * apex for anything we do not recognise.
  */
-export function siteOriginFrom(headers: Headers, fallback = 'https://saasrow.com'): string {
+export function siteOriginFrom(headers: Headers, fallback = 'https://saasrow.pwa.pit.world'): string {
   const host = (headers.get('x-forwarded-host') ?? headers.get('host') ?? '').split(',')[0].trim().toLowerCase()
   if (!host || !ALLOWED_HOSTS.test(host)) return fallback
-  if (host === 'www.saasrow.com') return 'https://saasrow.com'
+  if (host === 'www.saasrow.com') return 'https://saasrow.pwa.pit.world'
   const local = host.startsWith('localhost') || host.startsWith('127.0.0.1')
   const proto = (headers.get('x-forwarded-proto') ?? (local ? 'http' : 'https')).split(',')[0].trim()
   return `${proto === 'http' ? 'http' : 'https'}://${host}`

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install saasrow, the saasrow.com CLI (npm: @profullstack/saasrow).
 #
-#   curl -fsSL https://saasrow.com/install.sh | sh
+#   curl -fsSL https://saasrow.pwa.pit.world/install.sh | sh
 #
 # Uses bun if present, otherwise npm (Node >= 20.11). When the global npm
 # prefix is not writable it installs into ~/.local instead of asking for sudo.

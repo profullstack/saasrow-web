@@ -5,7 +5,7 @@ terminal. Search the directory without an account; create and manage your own
 free listings and API keys with one.
 
 ```bash
-curl -fsSL https://saasrow.com/install.sh | sh
+curl -fsSL https://saasrow.pwa.pit.world/install.sh | sh
 # or with npm
 npm install -g @profullstack/saasrow
 # or run it without installing

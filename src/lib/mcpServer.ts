@@ -37,7 +37,7 @@ import { siteOriginFrom } from './inviteRules'
 import { WebhookError } from '@profullstack/webhooks'
 import { getHooks, WEBHOOK_EVENT_HELP, WEBHOOK_EVENT_TYPES } from './webhooks/hub'
 
-const SITE_ORIGIN = 'https://saasrow.com'
+const SITE_ORIGIN = 'https://saasrow.pwa.pit.world'
 const mcpOrigin = (ctx: McpContext) => (ctx.request ? siteOriginFrom(ctx.request.headers) : SITE_ORIGIN)
 
 export const SUPPORTED_PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05']

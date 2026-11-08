@@ -39,7 +39,7 @@ const AUDIENCE_OPTIONS: AudienceOption[] = [
 /** Mirrors the footer send-email-broadcast appends, for the plain-text preview. */
 const BROADCAST_FOOTER = [
   { text: "You're receiving this email because you have an account on SaaSRow." },
-  { text: 'Visit SaaSRow', href: 'https://saasrow.com' },
+  { text: 'Visit SaaSRow', href: 'https://saasrow.pwa.pit.world' },
   { text: `© ${new Date().getFullYear()} Profullstack, Inc. All rights reserved.` },
 ]
 
@@ -355,7 +355,7 @@ export default function EmailBroadcast() {
                 id="content"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder={'Paste or write markdown — plain text works too.\n\n# Heading\n\nSome **bold** text with a [link](https://saasrow.com).\n\n- bullet one\n- bullet two'}
+                placeholder={'Paste or write markdown — plain text works too.\n\n# Heading\n\nSome **bold** text with a [link](https://saasrow.pwa.pit.world).\n\n- bullet one\n- bullet two'}
                 required
                 disabled={sending || drafting}
                 rows={14}

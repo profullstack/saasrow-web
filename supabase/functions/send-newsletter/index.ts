@@ -54,8 +54,8 @@ Deno.serve(async (req: Request) => {
     }
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const fromDomain = Deno.env.get('RESEND_DOMAIN') || 'saasrow.com'
-    const siteUrl = Deno.env.get('SITE_URL') || 'https://saasrow.com'
+    const fromDomain = Deno.env.get('RESEND_DOMAIN') || 'saasrow.pwa.pit.world'
+    const siteUrl = Deno.env.get('SITE_URL') || 'https://saasrow.pwa.pit.world'
 
     if (!resendApiKey) {
       return new Response(

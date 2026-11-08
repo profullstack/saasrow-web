@@ -78,13 +78,13 @@ describe('helpers', () => {
     expect(looksLikeInviteCode(42)).toBe(false)
   })
   it('siteOriginFrom uses the request host, never a foreign one', () => {
-    expect(siteOriginFrom(new Headers({ host: 'saasrow.com' }))).toBe('https://saasrow.com')
-    expect(siteOriginFrom(new Headers({ host: 'www.saasrow.com' }))).toBe('https://saasrow.com')
+    expect(siteOriginFrom(new Headers({ host: 'saasrow.pwa.pit.world' }))).toBe('https://saasrow.pwa.pit.world')
+    expect(siteOriginFrom(new Headers({ host: 'www.saasrow.com' }))).toBe('https://saasrow.pwa.pit.world')
     expect(siteOriginFrom(new Headers({ host: 'localhost:3000' }))).toBe('http://localhost:3000')
-    expect(siteOriginFrom(new Headers({ 'x-forwarded-host': 'evil.example', host: 'saasrow.com' }))).toBe('https://saasrow.com')
-    expect(siteOriginFrom(new Headers({ 'x-forwarded-host': 'saasrow.com', 'x-forwarded-proto': 'https', host: '127.0.0.1:3000' }))).toBe('https://saasrow.com')
+    expect(siteOriginFrom(new Headers({ 'x-forwarded-host': 'evil.example', host: 'saasrow.pwa.pit.world' }))).toBe('https://saasrow.pwa.pit.world')
+    expect(siteOriginFrom(new Headers({ 'x-forwarded-host': 'saasrow.pwa.pit.world', 'x-forwarded-proto': 'https', host: '127.0.0.1:3000' }))).toBe('https://saasrow.pwa.pit.world')
   })
   it('inviteUrl', () => {
-    expect(inviteUrl('https://saasrow.com', 'INV-AAAA-BBBB-CCCC')).toBe('https://saasrow.com/i/INV-AAAA-BBBB-CCCC')
+    expect(inviteUrl('https://saasrow.pwa.pit.world', 'INV-AAAA-BBBB-CCCC')).toBe('https://saasrow.pwa.pit.world/i/INV-AAAA-BBBB-CCCC')
   })
 })

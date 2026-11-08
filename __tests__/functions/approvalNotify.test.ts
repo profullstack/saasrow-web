@@ -36,11 +36,11 @@ describe('network promo', () => {
 })
 
 describe('approvalEmail', () => {
-  const email = approvalEmail('Acme [CRM](https://evil.test)', 'https://saasrow.com/software/abc', 'https://saasrow.com')
+  const email = approvalEmail('Acme [CRM](https://evil.test)', 'https://saasrow.pwa.pit.world/software/abc', 'https://saasrow.pwa.pit.world')
 
   it('names the listing without letting the title become a link', () => {
     expect(email.html).not.toContain('href="https://evil.test"')
-    expect(email.html).toContain('href="https://saasrow.com/software/abc"')
+    expect(email.html).toContain('href="https://saasrow.pwa.pit.world/software/abc"')
   })
 
   it('carries the promo in both parts', () => {
@@ -56,7 +56,7 @@ describe('notifyListingApproved', () => {
   it('sends one email per contact through the Resend batch API', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetchMock)
-    vi.stubGlobal('Deno', { env: { get: (k: string) => ({ RESEND_API_KEY: 're_x', SITE_URL: 'https://saasrow.com/' } as any)[k] } })
+    vi.stubGlobal('Deno', { env: { get: (k: string) => ({ RESEND_API_KEY: 're_x', SITE_URL: 'https://saasrow.pwa.pit.world/' } as any)[k] } })
 
     await notifyListingApproved(fakeDb('Acme', ['a@acme.io', 'b@example.com', 'c@acme.io']), 'abc')
 
@@ -66,7 +66,7 @@ describe('notifyListingApproved', () => {
     const batch = JSON.parse(init.body)
     expect(batch.map((m: any) => m.to)).toEqual(['a@acme.io', 'c@acme.io'])
     expect(batch[0].subject).toBe('Acme is live on SaaSRow')
-    expect(batch[0].html).toContain('href="https://saasrow.com/software/abc"')
+    expect(batch[0].html).toContain('href="https://saasrow.pwa.pit.world/software/abc"')
   })
 
   it('does nothing without a Resend key', async () => {
