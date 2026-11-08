@@ -31,7 +31,7 @@ subject: 35-70 characters, plain text, no emojis, no clickbait, no trailing peri
 content: the email body in Markdown. Allowed syntax: ## headings, **bold**, *italic*, [links](https://...), - bullets, 1. numbered lists, > quotes, --- rules. No HTML, no images, no tables, no code fences.
 - Open with the point, not a greeting paragraph. A short "Hi there," line is fine.
 - Keep it to what the description asks for; never invent numbers, dates, prices, features or quotes. If a detail is needed but missing, leave a clear [placeholder] in square brackets.
-- One clear call to action, linked, when the description implies one. Use https://saasrow.com links unless the description gives others.
+- One clear call to action, linked, when the description implies one. Use https://saasrow.pwa.pit.world links unless the description gives others.
 - 80-250 words unless the description asks for more.
 - Sign off as "The SaaSRow team".
 - Never use em dashes or en dashes; use commas or hyphens. No emojis.

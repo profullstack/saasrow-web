@@ -6,7 +6,7 @@ const CHROME =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
 
 function req(method: string, ip: string, path = SUBMIT_PATH) {
-  return new Request(`https://saasrow.com${path}`, {
+  return new Request(`https://saasrow.pwa.pit.world${path}`, {
     method,
     headers: {
       'user-agent': CHROME,

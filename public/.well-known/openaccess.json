@@ -1,10 +1,10 @@
 {
   "openaccess": "0.1",
   "name": "saasrow",
-  "url": "https://saasrow.com",
+  "url": "https://saasrow.pwa.pit.world",
   "operator": "https://logicsrc.com/.well-known/openprofile.md",
   "redirect_uris": [
-    "https://saasrow.com/api/v1/openaccess/callback"
+    "https://saasrow.pwa.pit.world/api/v1/openaccess/callback"
   ],
   "jwks": {
     "keys": [
@@ -22,7 +22,7 @@
   "honours": [
     "profullstack.com/all-access"
   ],
-  "webhooks": "https://saasrow.com/api/v1/openaccess/events",
+  "webhooks": "https://saasrow.pwa.pit.world/api/v1/openaccess/events",
   "hubs": [
     "https://openaccess.logicsrc.com"
   ]

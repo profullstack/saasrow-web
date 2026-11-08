@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     const input = await req.json().catch(() => ({}));
     const built = buildSessionRequest(input, {
       accountId: await signedInUserId(req),
-      siteUrl: Deno.env.get('SITE_URL') || 'https://saasrow.com',
+      siteUrl: Deno.env.get('SITE_URL') || 'https://saasrow.pwa.pit.world',
     });
     if (!built.ok) return json({ error: built.error }, 400);
 

@@ -108,7 +108,7 @@ describe('settleBonus', () => {
 
 describe('acceptInvite', () => {
   it('refuses an established account before touching the invite', async () => {
-    const req = new Request('https://saasrow.com/api/v1/me/invites/accept')
+    const req = new Request('https://saasrow.pwa.pit.world/api/v1/me/invites/accept')
     const r = await acceptInvite({ userId: 'u-alice', email: 'alice@example.com' }, 'INV-AAAA-BBBB-CCCC', req)
     expect(r.accepted).toBe(false)
     expect(rpc).not.toHaveBeenCalled()
@@ -117,7 +117,7 @@ describe('acceptInvite', () => {
     rpc.mockImplementation(async (fn: string) =>
       fn === 'aff_invited_by' ? { data: 'u-alice', error: null } : { data: null, error: null },
     )
-    const req = new Request('https://saasrow.com/api/v1/me/invites/accept')
+    const req = new Request('https://saasrow.pwa.pit.world/api/v1/me/invites/accept')
     const r = await acceptInvite({ userId: 'u-carol', email: 'carol@example.org' }, 'INV-AAAA-BBBB-CCCC', req)
     expect(r).toEqual({ accepted: false, message: 'You have already joined on an invite.' })
     expect(rpc.mock.calls.map((c) => c[0])).not.toContain('aff_claim_invite')
@@ -132,14 +132,14 @@ describe('acceptInvite', () => {
       return { data: null, error: null }
     })
     tables.invite_bonuses = []
-    const req = new Request('https://saasrow.com/api/v1/me/invites/accept')
+    const req = new Request('https://saasrow.pwa.pit.world/api/v1/me/invites/accept')
     const r = await acceptInvite({ userId: 'u-carol', email: 'carol@example.org' }, 'INV-AAAA-BBBB-CCCC', req)
     expect(r).toEqual({ accepted: false, message: 'You have already joined on an invite.' })
     expect(rpc.mock.calls.map((c) => c[0])).toContain('aff_claim_invite')
     expect(rpc.mock.calls.map((c) => c[0])).not.toContain('settle_invite_bonus')
   })
   it('refuses something that is not an invite code', async () => {
-    const req = new Request('https://saasrow.com/')
+    const req = new Request('https://saasrow.pwa.pit.world/')
     expect((await acceptInvite({ userId: 'u-carol', email: 'c' }, 'CR-AAAA-BBBB-CCCC-DDDD', req)).accepted).toBe(false)
   })
 })

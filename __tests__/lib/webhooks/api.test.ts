@@ -19,7 +19,7 @@ vi.mock('@/lib/webhooks/hub', async (orig) => ({ ...(await orig<object>()), getH
 
 const { GET, POST, DELETE } = await import('../../../app/api/v1/webhooks/[[...path]]/route')
 
-const req = (path: string, init: RequestInit = {}) => new Request(`https://saasrow.com/api/v1/webhooks${path}`, init)
+const req = (path: string, init: RequestInit = {}) => new Request(`https://saasrow.pwa.pit.world/api/v1/webhooks${path}`, init)
 
 describe('/api/v1/webhooks', () => {
   beforeEach(() => {

@@ -46,7 +46,7 @@ export function approvalEmail(title: string, listingUrl: string, siteUrl: string
 export async function notifyListingApproved(supabase: Db, submissionId: string): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY')
   if (!apiKey) return
-  const siteUrl = (Deno.env.get('SITE_URL') || 'https://saasrow.com').replace(/\/$/, '')
+  const siteUrl = (Deno.env.get('SITE_URL') || 'https://saasrow.pwa.pit.world').replace(/\/$/, '')
 
   try {
     const [{ data: submission }, { data: contacts }] = await Promise.all([

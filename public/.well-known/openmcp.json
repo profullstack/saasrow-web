@@ -1,9 +1,9 @@
 {
   "openmcp": "0.1",
-  "mcp": "https://saasrow.com/api/mcp",
+  "mcp": "https://saasrow.pwa.pit.world/api/mcp",
   "name": "saasrow",
   "description": "A directory of SaaS products, searchable by what they do.",
-  "url": "https://saasrow.com",
+  "url": "https://saasrow.pwa.pit.world",
   "auth": {
     "kind": "none"
   },

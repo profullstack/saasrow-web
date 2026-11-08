@@ -21,7 +21,7 @@ import { WEBHOOK_EVENT_TYPES } from './events'
 
 export { WEBHOOK_EVENT_TYPES, WEBHOOK_EVENT_HELP, type WebhookEventType } from './events'
 
-export const WEBHOOK_SOURCE = 'https://saasrow.com'
+export const WEBHOOK_SOURCE = 'https://saasrow.pwa.pit.world'
 
 export function createHooks(store: WebhookStore, options: Partial<WebhooksOptions> = {}): Webhooks {
   return new Webhooks({

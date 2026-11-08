@@ -176,6 +176,6 @@ describe('listingIdsForEmail', () => {
 
 describe('managementUrlFor', () => {
   it('keeps a base64 user token in one path segment', () => {
-    expect(managementUrlFor('https://saasrow.com/', 'Jm8g/e0V+A=')).toBe('https://saasrow.com/manage/Jm8g%2Fe0V%2BA%3D')
+    expect(managementUrlFor('https://saasrow.pwa.pit.world/', 'Jm8g/e0V+A=')).toBe('https://saasrow.pwa.pit.world/manage/Jm8g%2Fe0V%2BA%3D')
   })
 })

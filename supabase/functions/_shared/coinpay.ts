@@ -41,7 +41,7 @@ export type SessionRequest = {
   expires_in_minutes: number
 }
 
-const ALLOWED_REDIRECT_HOSTS = new Set(['saasrow.com', 'www.saasrow.com', 'localhost'])
+const ALLOWED_REDIRECT_HOSTS = new Set(['saasrow.pwa.pit.world', 'www.saasrow.com', 'localhost'])
 
 function safeRedirect(raw: unknown, siteUrl: string): string | null {
   if (typeof raw !== 'string' || !raw) return null

@@ -35,7 +35,7 @@ export function submitQuotaKey(request: Request): string | null {
 }
 
 export const gateway = createGateway({
-  siteUrl: env("SITE_URL") || env("NEXT_PUBLIC_SITE_URL") || "https://saasrow.com",
+  siteUrl: env("SITE_URL") || env("NEXT_PUBLIC_SITE_URL") || "https://saasrow.pwa.pit.world",
   siteName: "saasrow",
   coinpay: { apiKey: env("COINPAY_X402_KEY") },
   payTo: env("CRAWL_PAY_TO"),

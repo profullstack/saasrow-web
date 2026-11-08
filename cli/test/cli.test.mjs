@@ -282,11 +282,11 @@ test('redeem shows the refusal and exits non-zero', async () => {
 
 test('invites create prints the link once; invites lists them', async () => {
   const h = harness({
-    'POST /api/v1/me/invites': (c) => [201, { id: 'i1', code: 'INV-AAAA-BBBB-CCCC', url: 'https://saasrow.com/i/INV-AAAA-BBBB-CCCC', expires_at: '2026-11-25T00:00:00Z', quota: { total: 3, used: 1, left: 2 }, note: c.body.note }],
+    'POST /api/v1/me/invites': (c) => [201, { id: 'i1', code: 'INV-AAAA-BBBB-CCCC', url: 'https://saasrow.pwa.pit.world/i/INV-AAAA-BBBB-CCCC', expires_at: '2026-11-25T00:00:00Z', quota: { total: 3, used: 1, left: 2 }, note: c.body.note }],
     'GET /api/v1/me/invites': () => [200, {
       quota: { total: 3, used: 1, left: 2 }, can_send: true, can_send_reason: null, bonus_days: 7,
       invites: [{ id: 'i1', note: 'for Carol', status: 'unused', bonus: null, created_at: '2026-10-26T00:00:00Z', expires_at: null }],
-      affiliate_link: 'https://saasrow.com/?ref=ABCD1234',
+      affiliate_link: 'https://saasrow.pwa.pit.world/?ref=ABCD1234',
     }],
   }, { env: { SAASROW_API_KEY: 'sr_env' } })
   try {

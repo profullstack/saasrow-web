@@ -188,7 +188,7 @@ as $function$
            'tier', s.tier,
            'upvotes', coalesce(s.upvotes, 0),
            'downvotes', coalesce(s.downvotes, 0),
-           'saasrow_url', 'https://saasrow.com/software/' || s.id
+           'saasrow_url', 'https://saasrow.pwa.pit.world/software/' || s.id
          )
     from public.software_submissions s
    where s.id = p_submission

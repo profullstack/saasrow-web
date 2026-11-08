@@ -60,7 +60,7 @@ export async function commentRecipients(supabase: Db, comment: CommentRow): Prom
 export async function notifyCommentPublished(supabase: Db, commentIds: string[]): Promise<void> {
   const apiKey = Deno.env.get('RESEND_API_KEY')
   if (!apiKey || commentIds.length === 0) return
-  const siteUrl = (Deno.env.get('SITE_URL') || 'https://saasrow.com').replace(/\/$/, '')
+  const siteUrl = (Deno.env.get('SITE_URL') || 'https://saasrow.pwa.pit.world').replace(/\/$/, '')
 
   try {
     const { data: comments, error } = await supabase

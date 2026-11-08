@@ -185,7 +185,7 @@ Deno.serve(async (req: Request) => {
         <body>
           <div class="container">
             <div class="header">
-              <img src="https://saasrow.com/wiresniff-logo-1-1.png" alt="SaaSRow" class="logo" />
+              <img src="https://saasrow.pwa.pit.world/wiresniff-logo-1-1.png" alt="SaaSRow" class="logo" />
               <h2 class="subtitle">Manage Your Listings</h2>
             </div>
             <div class="content">
