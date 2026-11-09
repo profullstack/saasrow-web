@@ -129,17 +129,34 @@ export default function EmailBroadcast() {
     }
     setDrafting(true)
     try {
-      const res = await callFn('draft-email-broadcast', {
-        method: 'POST',
-        adminToken: sessionStorage.getItem('adminToken') ?? '',
-        // The current draft goes along so a second click revises instead of starting over.
-        body: { description, audience, subject, content },
-      })
-      const result = await res.json()
-      if (res.ok) {
+      const adminToken = sessionStorage.getItem('adminToken') ?? ''
+      // The current draft goes along so a second click revises instead of starting over.
+      const body = { description, audience, subject, content }
+      // c0mpute writes drafts on peer nodes and can take a few minutes: the first call
+      // queues a job, then we re-post its id until the draft is ready (each poll waits
+      // up to ~20 s server side).
+      const started = Date.now()
+      let res = await callFn('draft-email-broadcast', { method: 'POST', adminToken, body })
+      let result = await res.json().catch(() => ({ error: `Draft request failed (HTTP ${res.status})` }))
+      while (res.ok && result.pending && Date.now() - started < 10 * 60_000) {
+        const secs = Math.round((Date.now() - started) / 1000)
+        setAlertMessage({
+          type: 'info',
+          message: `Writing with c0mpute... ${secs}s${result.tokens ? `, ${result.tokens} tokens so far` : ''}. This can take a few minutes.`,
+        })
+        await new Promise((r) => setTimeout(r, 1500))
+        res = await callFn('draft-email-broadcast', { method: 'POST', adminToken, body: { ...body, jobId: result.jobId } })
+        result = await res.json().catch(() => ({ error: `Draft request failed (HTTP ${res.status})` }))
+      }
+      if (res.ok && result.pending) {
+        setAlertMessage({ type: 'error', message: 'c0mpute did not finish the draft within 10 minutes. Try again.' })
+      } else if (res.ok) {
         setSubject(result.subject)
         setContent(result.content)
-        setAlertMessage({ type: 'info', message: 'Draft written. Review and edit it before sending.' })
+        setAlertMessage({
+          type: 'info',
+          message: `Draft written${result.provider ? ` by ${result.provider}` : ''}. Review and edit it before sending.`,
+        })
       } else {
         setAlertMessage({ type: 'error', message: result.error || 'Failed to write the draft.' })
       }
