@@ -1,8 +1,10 @@
 // Drafts an email broadcast (subject + markdown body) from the admin's description.
 // Admin-only; nothing is sent or stored, the page drops the draft into its form.
 //
-// Providers are tried in order, like fetch-metadata: OpenAI, then Gemini. A provider
-// with no key is skipped.
+// c0mpute writes it first. Its peer nodes take minutes for a draft, longer than one
+// edge request may live, so the first call queues a job and returns {pending, jobId};
+// the page re-posts {jobId} until the draft is ready. If c0mpute cannot take the job
+// or the job fails, the frontier models (OpenAI, then Gemini) answer synchronously.
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { requireAdmin } from '../_shared/adminAuth.ts'
 import {
@@ -13,6 +15,7 @@ import {
   type BroadcastAudience,
   type BroadcastDraft,
 } from '../_shared/broadcastDraft.ts'
+import { c0mputeEnabled, jsonText, pollC0mputeJob, startC0mputeJob } from '../_shared/c0mpute.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -71,36 +74,69 @@ Deno.serve(async (req: Request) => {
     const admin = await requireAdmin(req, supabase, corsHeaders)
     if (admin instanceof Response) return admin
 
-    const { description, audience = 'all', subject, content } = (await req.json()) as {
+    const { description, audience = 'all', subject, content, jobId } = (await req.json()) as {
       description?: string
       audience?: BroadcastAudience
       subject?: string
       content?: string
+      jobId?: string
     }
     if (!description || !description.trim()) return json({ error: 'Describe the email you want written' }, 400)
     if (description.length > MAX_DESCRIPTION_LENGTH) {
       return json({ error: `Description is too long (max ${MAX_DESCRIPTION_LENGTH} characters)` }, 400)
     }
-
     const user = buildDraftUserPrompt(description, audience, { subject, content })
-    const providers: Array<[string, () => Promise<string>]> = []
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')
-    const geminiKey = Deno.env.get('GEMINI_API_KEY')
-    if (openaiKey) providers.push(['openai', () => askOpenAI(user, openaiKey)])
-    if (geminiKey) providers.push(['gemini', () => askGemini(user, geminiKey)])
-    if (providers.length === 0) return json({ error: 'No AI provider configured (OPENAI_API_KEY or GEMINI_API_KEY)' }, 500)
 
-    let lastError = ''
-    for (const [name, ask] of providers) {
+    const frontier = async (why: string) => {
+      const providers: Array<[string, () => Promise<string>]> = []
+      const openaiKey = Deno.env.get('OPENAI_API_KEY')
+      const geminiKey = Deno.env.get('GEMINI_API_KEY')
+      if (openaiKey) providers.push(['openai', () => askOpenAI(user, openaiKey)])
+      if (geminiKey) providers.push(['gemini', () => askGemini(user, geminiKey)])
+      let lastError = why
+      for (const [name, ask] of providers) {
+        try {
+          const draft: BroadcastDraft = parseDraft(await ask())
+          return json({ ...draft, provider: name })
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          console.error(`[draft-email-broadcast] ${name} failed:`, msg)
+          lastError = `${lastError}; ${name}: ${msg.slice(0, 120)}`
+        }
+      }
+      return json({ error: `AI draft failed: ${lastError}` }, 502)
+    }
+
+    // Poll a running c0mpute job.
+    if (jobId) {
+      const poll = await pollC0mputeJob(jobId, 20_000)
+      if (poll.state === 'pending') return json({ pending: true, jobId, tokens: poll.tokens, provider: 'c0mpute' })
+      if (poll.state === 'done') {
+        try {
+          const draft: BroadcastDraft = parseDraft(jsonText(poll.text))
+          return json({ ...draft, provider: 'c0mpute' })
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          console.error('[draft-email-broadcast] c0mpute answer unusable:', msg, poll.text.slice(0, 300))
+          return frontier(`c0mpute answer unusable: ${msg}`)
+        }
+      }
+      console.error('[draft-email-broadcast] c0mpute job failed:', poll.error)
+      return frontier(poll.error)
+    }
+
+    // Start one.
+    if (c0mputeEnabled()) {
       try {
-        const draft: BroadcastDraft = parseDraft(await ask())
-        return json({ ...draft, provider: name })
+        const id = await startC0mputeJob({ system: DRAFT_SYSTEM_PROMPT, user, temperature: 0.7, maxTokens: 1200 })
+        return json({ pending: true, jobId: id, tokens: 0, provider: 'c0mpute' })
       } catch (error) {
-        lastError = error instanceof Error ? error.message : String(error)
-        console.error(`[draft-email-broadcast] ${name} failed:`, lastError)
+        const msg = error instanceof Error ? error.message : String(error)
+        console.error('[draft-email-broadcast] c0mpute start failed:', msg)
+        return frontier(msg)
       }
     }
-    return json({ error: `AI draft failed: ${lastError}` }, 502)
+    return frontier('c0mpute disabled')
   } catch (error) {
     console.error('[draft-email-broadcast] error:', error)
     return json({ error: error instanceof Error ? error.message : String(error) }, 500)
