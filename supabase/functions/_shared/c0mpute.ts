@@ -61,7 +61,9 @@ export function jsonText(raw: string): string {
 // job stream, which replays every persisted event, and reads for a few seconds.
 
 const c0mputeUrl = () => (Deno.env.get('C0MPUTE_URL') || 'https://infernetprotocol.com').replace(/\/+$/, '')
-const HOUSE_MODELS = ['huihui_ai/qwen3.5-abliterated:9b', 'qwen2.5:7b', 'huihui_ai/qwen3.5-abliterated:4b']
+// Non-uncensored house models first: every node pulls them (house-models.json v4),
+// while the abliterated ones are opt-in since 2026-11-09 and served by fewer nodes.
+const HOUSE_MODELS = ['qwen2.5:7b', 'qwen3:4b', 'huihui_ai/qwen3.5-abliterated:9b']
 
 function c0mputeHeaders(): Record<string, string> {
   const key = Deno.env.get('C0MPUTE_API_KEY')
