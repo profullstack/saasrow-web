@@ -52,6 +52,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="/llms.txt"
           title="LLM-readable site index"
         />
+        {/* WebMCP (@profullstack/webmcp): site_info, open_page, search_site and the
+            public /api/mcp tools for the AI agent in the visitor's browser. Tools that
+            need an API key (Bearer only, no cookie) are left out. No-op without WebMCP. */}
+        <script
+          type="module"
+          data-webmcp=""
+          src="https://cdn.jsdelivr.net/npm/@profullstack/webmcp@0/src/embed.js"
+          data-mcp="/api/mcp"
+          data-mcp-exclude="create_listing,list_my_listings,get_my_listing,update_listing,delete_listing,my_karma,redeem_credit_code,my_invites,create_invite,redeem_karma_credit,list_webhooks,create_webhook,update_webhook,delete_webhook,test_webhook,rotate_webhook_secret,webhook_deliveries"
+          data-search-api="/api/v1/products?q={query}&limit={limit}"
+          data-pages='{"explore":"/explore","categories":"/categories","featured":"/featured","leaderboard":"/leaderboard","submit":"/submit","developers":"/developers","news":"/news"}'
+        />
       </head>
       <body>
         <PwaRegistration />
