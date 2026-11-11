@@ -1,13 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest'
 import { approvalEmail, notifyListingApproved } from '../../supabase/functions/_shared/approvalNotify'
-import { promoHtml, promoText } from '../../supabase/functions/_shared/networkPromo'
+import { networkPromo } from '../../supabase/functions/_shared/networkPromo'
 
-const LINKS = [
-  'https://built.indie.pit.world/submit',
-  'https://pwamart.com/console/submit',
-  'https://demo.movie',
-  'https://mynaposter.com',
-]
+// The two sister directories always lead; the rest rotate per recipient.
+const LINKS = ['https://built.indie.pit.world/submit?utm_source=saasrow.com', 'https://pwamart.com/console/submit?utm_source=saasrow.com']
 
 function fakeDb(title: string, emails: string[]) {
   return {
@@ -27,16 +23,22 @@ afterEach(() => {
 })
 
 describe('network promo', () => {
-  it('links every promoted site in both the HTML and text parts', () => {
+  it('links the sister directories in both the HTML and text parts, never SaaSRow itself', async () => {
+    const promo = await networkPromo('someone@example.com')
     for (const url of LINKS) {
-      expect(promoHtml()).toContain(`href="${url}"`)
-      expect(promoText()).toContain(url)
+      expect(promo.html).toContain(`href="${url}`)
+      expect(promo.text).toContain(url)
     }
+    expect(promo.text).not.toContain('saasrow.pwa.pit.world/submit')
+    expect(promo.html).toContain('#4FFFE3')
   })
 })
 
 describe('approvalEmail', () => {
-  const email = approvalEmail('Acme [CRM](https://evil.test)', 'https://saasrow.pwa.pit.world/software/abc', 'https://saasrow.pwa.pit.world')
+  let email: Awaited<ReturnType<typeof approvalEmail>>
+  beforeAll(async () => {
+    email = await approvalEmail('Acme [CRM](https://evil.test)', 'https://saasrow.pwa.pit.world/software/abc', 'https://saasrow.pwa.pit.world')
+  })
 
   it('names the listing without letting the title become a link', () => {
     expect(email.html).not.toContain('href="https://evil.test"')
@@ -45,7 +47,7 @@ describe('approvalEmail', () => {
 
   it('carries the promo in both parts', () => {
     for (const url of LINKS) {
-      expect(email.html).toContain(`href="${url}"`)
+      expect(email.html).toContain(`href="${url}`)
       expect(email.text).toContain(url)
     }
     expect(email.text).not.toContain('](')

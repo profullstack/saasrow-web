@@ -25,12 +25,16 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
+      // Never fetch the live cross-promo catalog in tests (they stub fetch).
+      CROSS_PROMO: 'bundled',
     },
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      'server-only': path.resolve(__dirname, './__tests__/stubs/server-only.ts'),
-    },
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './src') },
+      { find: 'server-only', replacement: path.resolve(__dirname, './__tests__/stubs/server-only.ts') },
+      // Edge functions import Deno-style npm: specifiers; tests resolve the installed package.
+      { find: /^npm:@profullstack\/cross-promo@.*$/, replacement: '@profullstack/cross-promo' },
+    ],
   },
 })
