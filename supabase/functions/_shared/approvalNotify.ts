@@ -1,6 +1,6 @@
 import { buildEmailParts } from './emailMarkdown.ts'
 import { sendableEmails } from './emailRecipients.ts'
-import { promoMarkdown, promoText } from './networkPromo.ts'
+import { networkPromo } from './networkPromo.ts'
 
 /**
  * Tells a listing's contacts that an admin approved it and it is live.
@@ -16,8 +16,9 @@ type Db = { from: (table: string) => any }
 /** Markdown-inert: a title can be bold text, never a link. */
 const plain = (text: string) => text.replace(/[*_`[\]()<>#\\]/g, '').trim()
 
-export function approvalEmail(title: string, listingUrl: string, siteUrl: string) {
+export async function approvalEmail(title: string, listingUrl: string, siteUrl: string) {
   const name = plain(title) || 'Your listing'
+  const promo = await networkPromo()
   const { html, text } = buildEmailParts({
     heading: 'SaaSRow',
     markdown: [
@@ -25,7 +26,7 @@ export function approvalEmail(title: string, listingUrl: string, siteUrl: string
       `[View your listing](${listingUrl})`,
       'Share the link so people can find it, upvote it and comment on it.',
       '---',
-      promoMarkdown(),
+      promo.markdown,
     ].join('\n\n'),
     footer: [
       { text: "You're receiving this because you submitted this software to SaaSRow." },
@@ -39,7 +40,7 @@ export function approvalEmail(title: string, listingUrl: string, siteUrl: string
     html,
     // The markdown text part would show promo links as [name](url); the
     // hand-written one reads better in a plain-text client.
-    text: text.split('\n---')[0].trimEnd() + '\n\n' + promoText(),
+    text: text.split('\n---')[0].trimEnd() + (promo.text ? '\n\n' + promo.text : ''),
   }
 }
 
@@ -56,7 +57,7 @@ export async function notifyListingApproved(supabase: Db, submissionId: string):
     const recipients = sendableEmails((contacts ?? []).map((c: { email: string | null }) => c.email))
     if (recipients.length === 0) return
 
-    const email = approvalEmail(submission?.title || '', `${siteUrl}/software/${submissionId}`, siteUrl)
+    const email = await approvalEmail(submission?.title || '', `${siteUrl}/software/${submissionId}`, siteUrl)
     const res = await fetch('https://api.resend.com/emails/batch', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },

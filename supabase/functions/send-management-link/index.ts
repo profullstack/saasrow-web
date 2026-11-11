@@ -1,6 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.76.1'
 import { managementUrlFor, normalizeEmail, resolveManagementAccess } from '../_shared/managementAccess.ts'
-import { promoHtml, promoText } from '../_shared/networkPromo.ts'
+import { networkPromo } from '../_shared/networkPromo.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +62,7 @@ Deno.serve(async (req: Request) => {
     const siteUrl = Deno.env.get('SITE_URL') || 'http://localhost:5173'
     const managementUrl = managementUrlFor(siteUrl, access.token)
 
+    const promo = await networkPromo(email)
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -206,7 +207,7 @@ Deno.serve(async (req: Request) => {
               <p>If the button doesn't work, copy this link:</p>
               <a href="${managementUrl}">${managementUrl}</a>
             </div>
-            ${promoHtml()}
+            ${promo.html}
             <div class="security-note">
               <strong>🔒 Keep This Email Safe</strong><br>
               This link provides direct access to manage your listings. Don't share it with anyone.
@@ -234,7 +235,7 @@ We've created a unique management dashboard for you where you can:
 Access your dashboard here:
 ${managementUrl}
 
-${promoText()}
+${promo.text}
 
 🔒 Keep This Email Safe
 This link provides direct access to manage your listings. Don't share it with anyone.
