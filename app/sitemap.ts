@@ -2,15 +2,12 @@ import type { MetadataRoute } from 'next'
 import { createClient } from '@supabase/supabase-js'
 import { getBlogList, getNewsList } from '@/lib/api'
 import { fetchAllRows } from '@/lib/fetchAllRows'
+import { siteUrl } from '@/lib/structuredData'
 
 // Regenerate at most hourly so new listings/posts get picked up without
 // rebuilding the whole site.
 export const revalidate = 3600
 
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.saasrow.com').replace(
-  /\/+$/,
-  '',
-)
 
 type SitemapSubmission = {
   id: string
@@ -39,6 +36,7 @@ async function getApprovedSubmissions(): Promise<SitemapSubmission[]> {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const SITE = siteUrl()
   const [submissions, blog, news] = await Promise.all([
     getApprovedSubmissions(),
     getBlogList().catch(() => []),

@@ -13,8 +13,13 @@ import type { Submission } from './submissions'
 
 export const SITE_NAME = 'SaaSRow'
 
+// SaaSRow retired to https://saasrow.pwa.pit.world on 2026-11-08 (the old
+// domains 308 there). Read at runtime through a non-literal key: Next inlines
+// `process.env.NAME` at build time, and the build has no SITE_URL.
+const env = (name: string) => process.env[name]
+
 export function siteUrl(): string {
-  return (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.saasrow.com').replace(/\/+$/, '')
+  return (env('SITE_URL') || env('NEXT_PUBLIC_SITE_URL') || 'https://saasrow.pwa.pit.world').replace(/\/+$/, '')
 }
 
 function storageUrl(bucket: string, path: string): string | undefined {
