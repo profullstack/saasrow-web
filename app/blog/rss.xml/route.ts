@@ -1,12 +1,8 @@
 import { getBlogList } from '@/lib/api'
+import { siteUrl } from '@/lib/structuredData'
 
 // Regenerate at most hourly so new posts show up without a full rebuild.
 export const revalidate = 3600
-
-const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.saasrow.com').replace(
-  /\/+$/,
-  '',
-)
 
 function escapeXml(value: string): string {
   return value
@@ -18,6 +14,7 @@ function escapeXml(value: string): string {
 }
 
 export async function GET() {
+  const SITE = siteUrl()
   const posts = await getBlogList()
 
   const lastBuildDate = new Date().toUTCString()

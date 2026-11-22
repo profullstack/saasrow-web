@@ -14,7 +14,7 @@
         "@profullstack/stack": "^0.5.0",
         "@profullstack/throttle": "^0.5.1",
         "@profullstack/webhooks": "0.2.1",
-        "@profullstack/x402-gateway": "^0.18.2",
+        "@profullstack/x402-gateway": "^0.18.4",
         "@radix-ui/react-slot": "^1.5.0",
         "@supabase/ssr": "^0.12.7",
         "@supabase/supabase-js": "^2.118.0",
@@ -260,7 +260,7 @@
 
     "@profullstack/webhooks": ["@profullstack/webhooks@0.2.1", "", {}, "sha512-QHeSkpu4O44oJ620qhQqxqFlD3u/OhupmXRnBHw4MGKuDTa0R+Y/727nnF7psSHxxSfnbWfNuVl15z3IXuaZiw=="],
 
-    "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.18.2", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-PM0S2ADXPKPvPLLlWVbEqMq+EhKxiNxg1wp0jeGf9S5tz2ZGaNIFqun69cO5lJGZgfh03ST4UkJZGr8CmvCWyg=="],
+    "@profullstack/x402-gateway": ["@profullstack/x402-gateway@0.18.4", "", { "dependencies": { "@profullstack/keys": "^0.1.0" } }, "sha512-Glff1R6FvaYbiZK+zJv+vB11DOxUU7zQt9yIw/aLrVnta9OTqkULnGzqLy62egL6BZbxtVfW3kx/yHXiZOKVAw=="],
 
     "@puppeteer/browsers": ["@puppeteer/browsers@3.2.6", "", { "dependencies": { "modern-tar": "^0.8.6", "yargs": "^18.0.0" }, "peerDependencies": { "proxy-agent": ">=8.0.1", "yauzl": "^2.10.0 || ^3.4.0" }, "optionalPeers": ["proxy-agent", "yauzl"], "bin": { "browsers": "lib/main-cli.js" } }, "sha512-MJP29gVoHznmqmwhH1tlZqzfeQ3aylTpSSa6WKZXtkwYUH02i9imBmWGTyZrbnAou5paX78SE4jMAUqnEPf8ug=="],
 
