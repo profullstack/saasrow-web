@@ -13,6 +13,8 @@ import { buildSessionRequest } from '../_shared/coinpay.ts';
 // that or the bare origin.
 const API_URL = (Deno.env.get('COINPAY_API_URL') || 'https://coinpayportal.com').replace(/\/+$/, '').replace(/\/api$/, '');
 const API_KEY = Deno.env.get('COINPAY_API_KEY') || '';
+// Names this app on CoinPay's side: every fleet app reaches it from one IP.
+const COINPAY_UA = 'saasrow.com (+https://saasrow.com) supabase-edge/coinpay-checkout';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -48,7 +50,7 @@ Deno.serve(async (req) => {
       const id = new URL(req.url).searchParams.get('session') || '';
       if (!/^cs_[A-Za-z0-9_-]+$/.test(id)) return json({ error: 'session is required' }, 400);
       const res = await fetch(`${API_URL}/api/checkout/sessions/${encodeURIComponent(id)}`, {
-        headers: { Authorization: `Bearer ${API_KEY}` },
+        headers: { Authorization: `Bearer ${API_KEY}`, 'User-Agent': COINPAY_UA },
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) return json({ error: data?.error || 'Session not found' }, res.status === 404 ? 404 : 502);
@@ -68,7 +70,7 @@ Deno.serve(async (req) => {
 
     const res = await fetch(`${API_URL}/api/checkout/sessions`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json', 'User-Agent': COINPAY_UA },
       body: JSON.stringify(built.body),
     });
     const data = await res.json().catch(() => ({}));
