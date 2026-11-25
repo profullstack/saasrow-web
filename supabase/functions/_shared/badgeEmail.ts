@@ -63,7 +63,7 @@ export async function badgeEmail(
     `Paste this into the HTML of ${listing.url} (the footer works well):`,
     snippet,
     `Any link to ${page} counts, the badge is just the easy way. It has to be in the page's HTML, not added later by JavaScript.`,
-    `Then [check it from your listing page](${manage}). We also look on our own every few hours.`,
+    `Then [check it from your listing page](${manage}). We also look on our own twice a day.`,
     `Would rather not? [Featured is $2 lifetime](${featured}): one payment, no badge to keep.`,
   ]
 
