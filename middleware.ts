@@ -24,6 +24,9 @@ export async function middleware(request: NextRequest) {
   return trackReferralCode(request, NextResponse.next() as any);
 }
 
+// /for is the badge link every other site carries (/for?site=<domain>): a
+// redirect with nothing in it to scrape, so it is never metered or sold. The
+// badge image (/for.svg) is already left alone as an .svg.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|install.sh$|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|install.sh$|for$|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
 };
