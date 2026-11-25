@@ -34,11 +34,32 @@ const plain = (text: string) => text.replace(/[*_`[\]()<>#\\]/g, '').trim()
 
 const attr = (v: string) => v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
-/** The same HTML the manage page hands out (src/lib/badgeShared.ts). */
-export function badgeHtml(listing: { id: string; title: string }, siteUrl: string): string {
+const siteHost = (site: string | null | undefined): string | null => {
+  const v = String(site ?? '').trim()
+  if (!v) return null
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`)
+    return u.host.replace(/^www\./, '').toLowerCase() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The same HTML the manage page hands out (src/lib/badgeShared.ts): addressed
+ * by the listing's domain when its URL is known, so the line also works in a
+ * footer shared by several sites; by id otherwise.
+ */
+export function badgeHtml(listing: { id: string; title: string; url?: string | null }, siteUrl: string): string {
   const base = siteUrl.replace(/\/+$/, '')
+  const alt = attr(`${listing.title} on SaaSRow`)
+  const host = siteHost(listing.url)
+  if (host) {
+    const s = encodeURIComponent(host)
+    return `<a href="${base}/for?site=${s}"><img src="${base}/for.svg?site=${s}" alt="${alt}" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`
+  }
   const page = `${base}/software/${listing.id}`
-  return `<a href="${page}"><img src="${page}/badge.svg" alt="${attr(`${listing.title} on SaaSRow`)}" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`
+  return `<a href="${page}"><img src="${page}/badge.svg" alt="${alt}" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`
 }
 
 const day = (iso: string | null | undefined) =>

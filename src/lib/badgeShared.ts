@@ -85,30 +85,67 @@ export interface BadgeSnippet {
   markdown: string
 }
 
-/** Copy-paste snippets for one listing, dark and light. */
-export function badgeSnippets(listing: { id: string; title: string }, siteUrl: string) {
+/** The bare host a site URL or domain is about: no scheme, no www, lower case. null when it is not one. */
+export function siteHost(site: unknown): string | null {
+  const v = String(site ?? '').trim()
+  if (!v) return null
+  try {
+    const u = new URL(/^https?:\/\//i.test(v) ? v : `https://${v}`)
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null
+    return u.host.replace(/^www\./, '').toLowerCase() || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Copy-paste snippets for one listing, dark and light.
+ *
+ * With the listing's URL they are addressed by domain (/for?site=example.com),
+ * not by id: the same line then works in a footer shared by many sites, each
+ * passing its own domain. Without a URL they fall back to the id form. Both
+ * forms verify.
+ */
+export function badgeSnippets(listing: { id: string; title: string; url?: string | null }, siteUrl: string) {
   const base = siteUrl.replace(/\/+$/, '')
   const page = `${base}/software/${listing.id}`
   const alt = `${listing.title} on SaaSRow`
+  const host = siteHost(listing.url)
+  const site = host ? encodeURIComponent(host) : null
+  const link = site ? `${base}/for?site=${site}` : page
   const one = (t: BadgeTheme): BadgeSnippet => {
-    const image = `${base}/software/${listing.id}/badge.svg${t === 'light' ? '?theme=light' : ''}`
+    const image = site
+      ? `${base}/for.svg?site=${site}${t === 'light' ? '&theme=light' : ''}`
+      : `${base}/software/${listing.id}/badge.svg${t === 'light' ? '?theme=light' : ''}`
     return {
       image,
-      html: `<a href="${page}"><img src="${image}" alt="${esc(alt)}" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`,
-      markdown: `[![${alt.replace(/[[\]]/g, '')}](${image})](${page})`,
+      html: `<a href="${link}"><img src="${esc(image)}" alt="${esc(alt)}" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`,
+      markdown: `[![${alt.replace(/[[\]]/g, '')}](${image})](${link})`,
     }
   }
-  return { page, alt, dark: one('dark'), light: one('light') }
+  return { page, link, alt, dark: one('dark'), light: one('light') }
+}
+
+/** The one line for a footer shared by many sites: each site passes its own domain. */
+export function siteBadgeHtml(site: string, siteUrl: string): string {
+  const base = siteUrl.replace(/\/+$/, '')
+  const s = encodeURIComponent(siteHost(site) ?? site)
+  return `<a href="${base}/for?site=${s}"><img src="${base}/for.svg?site=${s}" alt="Listed on SaaSRow" width="${BADGE_W}" height="${BADGE_H}" loading="lazy"></a>`
 }
 
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 /**
- * Does this HTML link to the listing's SaaSRow page? Any `href` to
- * /software/<id> on one of our hosts counts: the badge is the easy way to add
- * one, a plain text link is as good.
+ * Does this HTML link to the listing's SaaSRow page? Two forms count, on any
+ * of our hosts:
+ *
+ *   /software/<id>                  the listing's page (a plain text link is as good as the badge)
+ *   /for?site=<the site's domain>   the by-domain badge, as a shared footer writes it
+ *
+ * The by-domain form only counts when the domain it names is the listing's own
+ * (`listingUrl`): a page cannot verify by pointing at somebody else's.
  */
-export function linksBack(html: string | null | undefined, id: string, siteUrl?: string): boolean {
+export function linksBack(html: string | null | undefined, id: string, siteUrl?: string, listingUrl?: string | null): boolean {
   if (!html || !id) return false
   const hosts = new Set(BADGE_HOSTS)
   if (siteUrl) {
@@ -119,11 +156,22 @@ export function linksBack(html: string | null | undefined, id: string, siteUrl?:
     }
   }
   const h = [...hosts].map(reEscape).join('|')
-  const re = new RegExp(
-    `href\\s*=\\s*["']?(?:https?:)?//(?:www\\.)?(?:${h})/software/${reEscape(id)}(?:[/?#"'\\s>]|$)`,
-    'i',
-  )
-  return re.test(html)
+  const origin = `href\\s*=\\s*["']?(?:https?:)?//(?:www\\.)?(?:${h})`
+  if (new RegExp(`${origin}/software/${reEscape(id)}(?:[/?#"'\\s>]|$)`, 'i').test(html)) return true
+
+  const own = siteHost(listingUrl)
+  if (!own) return false
+  const bySite = new RegExp(`${origin}/for\\?(?:[^"'\\s>]*?(?:&amp;|&))?site=([^"'\\s>&]+)`, 'gi')
+  for (const m of html.matchAll(bySite)) {
+    let value = m[1]
+    try {
+      value = decodeURIComponent(value)
+    } catch {
+      // not cleanly percent-encoded: compare it as written
+    }
+    if (siteHost(value) === own) return true
+  }
+  return false
 }
 
 const PAID_TIERS = new Set(['featured', 'premium'])

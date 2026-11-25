@@ -9,6 +9,8 @@ import {
   compact,
   linksBack,
   listBadgeSvg,
+  siteBadgeHtml,
+  siteHost,
 } from '@/lib/badgeShared'
 
 vi.mock('server-only', () => ({}))
@@ -52,6 +54,48 @@ describe('linksBack', () => {
     const html = `<a href="https://staging.example.dev/software/${ID}">x</a>`
     expect(linksBack(html, ID, SITE)).toBe(false)
     expect(linksBack(html, ID, 'https://staging.example.dev')).toBe(true)
+  })
+})
+
+describe('the by-domain badge', () => {
+  const url = 'https://www.acme.test/pricing'
+
+  it('is what a listing with a URL is handed, and it verifies', () => {
+    const { dark, light, link } = badgeSnippets({ id: ID, title: 'Acme', url }, SITE)
+    expect(link).toBe(`${SITE}/for?site=acme.test`)
+    expect(dark.html).toContain(`href="${SITE}/for?site=acme.test"`)
+    expect(dark.html).toContain(`src="${SITE}/for.svg?site=acme.test"`)
+    expect(light.html).toContain('for.svg?site=acme.test&amp;theme=light')
+    expect(linksBack(dark.html, ID, SITE, url)).toBe(true)
+    expect(linksBack(light.html, ID, SITE, url)).toBe(true)
+  })
+
+  it('accepts the line a shared footer writes: the site passes its own domain, in any spelling', () => {
+    expect(siteBadgeHtml('https://acme.test/', SITE)).toContain(`${SITE}/for?site=acme.test"`)
+    for (const site of ['acme.test', 'www.acme.test', 'https%3A%2F%2Facme.test%2F', 'https://acme.test/', 'ACME.test']) {
+      expect(linksBack(`<a href="https://saasrow.com/for?site=${site}">x</a>`, ID, SITE, url), site).toBe(true)
+    }
+    expect(linksBack('<a href="https://saasrow.com/for?ref=footer&amp;site=acme.test">x</a>', ID, SITE, url)).toBe(true)
+  })
+
+  it("never verifies on somebody else's domain, a look-alike, or without knowing the listing's URL", () => {
+    const html = '<a href="https://saasrow.com/for?site=other.test">x</a>'
+    expect(linksBack(html, ID, SITE, url)).toBe(false)
+    expect(linksBack('<a href="https://saasrow.com/for?site=acme.test.evil.test">x</a>', ID, SITE, url)).toBe(false)
+    expect(linksBack('<a href="https://saasrow.com/for?site=notacme.test">x</a>', ID, SITE, url)).toBe(false)
+    expect(linksBack('<a href="https://evil.test/for?site=acme.test">x</a>', ID, SITE, url)).toBe(false)
+    expect(linksBack('<a href="https://saasrow.com/for?site=acme.test">x</a>', ID, SITE)).toBe(false)
+    expect(linksBack('<img src="https://saasrow.com/for.svg?site=acme.test">', ID, SITE, url)).toBe(false)
+  })
+
+  it('reads a domain out of whatever a site passes', () => {
+    expect(['acme.test', 'https://WWW.Acme.test/x?y', 'http://acme.test:8080/', '', null].map(siteHost)).toEqual([
+      'acme.test',
+      'acme.test',
+      'acme.test:8080',
+      null,
+      null,
+    ])
   })
 })
 
