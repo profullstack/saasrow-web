@@ -199,7 +199,7 @@ Deno.serve(async (req: Request) => {
                 <li style="margin-bottom: 8px;">🚀 Upgrade to featured tiers</li>
                 <li style="margin-bottom: 8px;">📈 View analytics and engagement</li>
               </ul>
-              <p><strong class="highlight">One step for free listings:</strong> a free listing goes live once it is approved and your website carries the SaaSRow badge (one line of HTML). The badge is on your dashboard, with a button to check your site. Featured ($2, once) needs no badge.</p>
+              <p><strong class="highlight">One step for free listings:</strong> a free listing goes live once it is approved and your website carries the SaaSRow badge (one line of HTML). The badge is on your dashboard, with a button to check your site. Featured ($2 lifetime) needs no badge.</p>
             </div>
             <div class="button-container">
               <a href="${managementUrl}" class="button">Access My Dashboard</a>
@@ -235,7 +235,7 @@ We've created a unique management dashboard for you where you can:
 
 One step for free listings: a free listing goes live once it is approved and
 your website carries the SaaSRow badge (one line of HTML). The badge is on your
-dashboard, with a button to check your site. Featured ($2, once) needs no badge.
+dashboard, with a button to check your site. Featured ($2 lifetime) needs no badge.
 
 Access your dashboard here:
 ${managementUrl}

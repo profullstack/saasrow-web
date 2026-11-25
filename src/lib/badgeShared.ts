@@ -170,7 +170,7 @@ export function badgeAdvice(row: BadgeColumns & { url?: string }, siteUrl: strin
   if (!s.required) return 'This listing does not need the badge.'
   if (s.verified) return 'Badge verified. Keep it on your site: we re-check daily, and removing it hides the listing after 3 days.'
   const where = row.url ? ` on ${row.url}` : ' on your homepage'
-  if (s.hidden) return `Your listing is approved but hidden until the badge is${where}. Add the HTML, then check again. Or upgrade to Featured ($2, once) at ${featured}: no badge needed.`
-  if (s.grace_until) return `Free listings need the badge${where} by ${s.grace_until.slice(0, 10)}, or the listing is hidden. Featured ($2, once) at ${featured} needs no badge.`
-  return `Free listings go live once they are approved and the badge is${where}. Add the HTML now so approval is the only step left. Featured ($2, once) at ${featured} needs no badge.`
+  if (s.hidden) return `Your listing is approved but hidden until the badge is${where}. Add the HTML, then check again. Or upgrade to Featured ($2 lifetime) at ${featured}: no badge needed.`
+  if (s.grace_until) return `Free listings need the badge${where} by ${s.grace_until.slice(0, 10)}, or the listing is hidden. Featured ($2 lifetime) at ${featured} needs no badge.`
+  return `Free listings go live once they are approved and the badge is${where}. Add the HTML now so approval is the only step left. Featured ($2 lifetime) at ${featured} needs no badge.`
 }
