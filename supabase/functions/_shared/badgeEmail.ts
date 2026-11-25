@@ -64,7 +64,7 @@ export async function badgeEmail(
     snippet,
     `Any link to ${page} counts, the badge is just the easy way. It has to be in the page's HTML, not added later by JavaScript.`,
     `Then [check it from your listing page](${manage}). We also look on our own every few hours.`,
-    `Would rather not? [Featured is $2, once](${featured}): no badge, no expiry.`,
+    `Would rather not? [Featured is $2 lifetime](${featured}): one payment, no badge to keep.`,
   ]
 
   let subject: string

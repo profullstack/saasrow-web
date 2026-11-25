@@ -609,11 +609,7 @@ export default function SubmitPage() {
                   <ul className="text-white/70 text-sm font-ubuntu space-y-2">
                     <li className="flex items-start gap-2">
                       <span className="text-[#4FFFE3] mt-0.5">✓</span>
-                      <span><strong>No expiration</strong> - Permanent listings</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#4FFFE3] mt-0.5">✓</span>
-                      <span><strong>No badge required</strong> on your site</span>
+                      <span><strong>Permanent listings</strong> - no badge to keep on your site</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-[#4FFFE3] mt-0.5">✓</span>
@@ -701,13 +697,12 @@ export default function SubmitPage() {
                         <li>• Community visibility</li>
                         <li>• Standard review time (7-10 days)</li>
                         <li className="text-yellow-400">⚠️ Goes live once your site carries the SaaSRow badge (one line of HTML)</li>
-                        <li className="text-yellow-400">⚠️ Expires after 90 days (renewable)</li>
+                        <li>• No expiry: stays live while the badge is on your site (checked daily)</li>
                       </>
                     )}
                     {userTier === 'featured' && (
                       <>
-                        <li className="text-[#4FFFE3] font-semibold">• No expiration - Permanent listings</li>
-                        <li className="text-[#4FFFE3] font-semibold">• No SaaSRow badge required on your site</li>
+                        <li className="text-[#4FFFE3] font-semibold">• Permanent listings: no SaaSRow badge to keep on your site</li>
                         <li>• Dofollow backlink</li>
                         <li>• Up to 5 software listings</li>
                         <li>• Featured badge on listings</li>
@@ -726,7 +721,7 @@ export default function SubmitPage() {
                       <span>
                         <strong className="text-white">Need more?</strong>
                         <br />
-                        Upgrade to <span className="text-[#E0FF04]">Featured</span> for permanent listings (no expiration, no badge on your site), 5 URLs, priority review, featured badge, and analytics!
+                        Upgrade to <span className="text-[#E0FF04]">Featured</span> for permanent listings with no badge to keep on your site, 5 URLs, priority review, featured badge, and analytics!
                       </span>
                     </p>
                   </div>

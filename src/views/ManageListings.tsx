@@ -97,7 +97,6 @@ export default function ManageListings() {
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void; confirmColor?: 'primary' | 'danger' } | null>(null)
   const [showAnalytics, setShowAnalytics] = useState<string | null>(null)
   const [generatingScreenshots, setGeneratingScreenshots] = useState<string | null>(null)
-  const [renewingListing, setRenewingListing] = useState<string | null>(null)
 
   useEffect(() => {
     if (!token) {
@@ -361,44 +360,6 @@ export default function ManageListings() {
       })
     } finally {
       setGeneratingScreenshots(null)
-    }
-  }
-
-  const handleRenewListing = async (submissionId: string) => {
-    if (!token) return
-
-    setRenewingListing(submissionId)
-    try {
-      const decodedToken = decodeURIComponent(token)
-      const response = await callFn('renew-listing', {
-        method: 'POST',
-        body: {
-          submissionId,
-          token: decodedToken
-        },
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to renew listing')
-      }
-
-      setAlertMessage({
-        type: 'success',
-        message: 'Listing renewed for 90 days! Your listing is now active again.'
-      })
-
-      // Refresh submissions to show updated expiration date
-      await fetchSubmissions()
-    } catch (err) {
-      console.error('Renewal error:', err)
-      setAlertMessage({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Failed to renew listing'
-      })
-    } finally {
-      setRenewingListing(null)
     }
   }
 
@@ -823,27 +784,6 @@ export default function ManageListings() {
                         >
                           {submission.url}
                         </a>
-                        {submission.expires_at && (!submission.tier || submission.tier === 'free') && (
-                          <div className="mt-2">
-                            {submission.status === 'expired' ? (
-                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-500/20 border border-red-500 rounded-full">
-                                <span className="text-red-400 text-xs sm:text-sm font-ubuntu font-bold">
-                                  EXPIRED
-                                </span>
-                              </div>
-                            ) : new Date(submission.expires_at) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) ? (
-                              <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-500/20 border border-yellow-500 rounded-full">
-                                <span className="text-yellow-400 text-xs sm:text-sm font-ubuntu font-bold">
-                                  ⚠️ Expires {new Date(submission.expires_at).toLocaleDateString()}
-                                </span>
-                              </div>
-                            ) : (
-                              <p className="text-white/50 text-xs sm:text-sm font-ubuntu">
-                                Expires: {new Date(submission.expires_at).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {submission.tier === 'premium' && (
@@ -928,35 +868,11 @@ export default function ManageListings() {
                           <li>✓ Monthly performance analytics</li>
                           <li>✓ Logo in category pages</li>
                           <li>✓ Social media mentions</li>
-                          <li className="text-yellow-400">⚠️ Live only while your site carries the SaaSRow badge</li>
-                          <li className="text-yellow-400">⚠️ Listings expire after 90 days (renewable)</li>
+                          <li>✓ No expiry: live for as long as your site carries the SaaSRow badge (we check daily)</li>
                         </ul>
-                        {submission.expires_at && (
-                          <div className="mt-4 pt-4 border-t border-white/10">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                              <div>
-                                <p className="text-sm text-white/80 font-ubuntu font-semibold mb-1">
-                                  {submission.status === 'expired' ? '🔴 This listing has expired' : `📅 Expires: ${new Date(submission.expires_at).toLocaleDateString()}`}
-                                </p>
-                                {submission.renewal_count && submission.renewal_count > 0 && (
-                                  <p className="text-xs text-white/50 font-ubuntu">
-                                    Renewed {submission.renewal_count} time{submission.renewal_count > 1 ? 's' : ''}
-                                  </p>
-                                )}
-                              </div>
-                              <button
-                                onClick={() => handleRenewListing(submission.id)}
-                                disabled={renewingListing === submission.id}
-                                className="px-6 py-2 bg-[#4FFFE3] text-neutral-800 rounded-full font-ubuntu font-bold hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
-                              >
-                                {renewingListing === submission.id ? 'Renewing...' : 'Renew (Free)'}
-                              </button>
-                            </div>
-                          </div>
-                        )}
                         <div className="mt-4 pt-4 border-t border-white/10">
                           <p className="text-sm text-white/60 font-ubuntu">
-                            💡 <span className="text-white/80 font-semibold">Want permanent listings?</span> Upgrade to Featured or Premium for no expiration, advanced analytics, and more visibility.
+                            💡 <span className="text-white/80 font-semibold">Would rather not carry the badge?</span> Featured is $2 lifetime: no badge to keep, plus advanced analytics and more visibility.
                           </p>
                         </div>
                       </div>

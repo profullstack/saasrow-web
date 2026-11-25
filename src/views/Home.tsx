@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { Header } from '../components/Header'
 import { SearchSection } from '../components/SearchSection'
@@ -8,7 +8,6 @@ import { EarnKarmaNudge } from '../components/EarnKarmaNudge'
 import { SoftwareListings } from '../components/SoftwareListings'
 import { Footer } from '../components/Footer'
 import { FloatingCTA } from '../components/FloatingCTA'
-import { callFn } from '@/lib/clientApi'
 
 interface HomePageProps {
   initialListings?: Parameters<typeof SoftwareListings>[0]['initialListings']
@@ -20,20 +19,6 @@ export default function HomePage({ initialListings }: HomePageProps = {}) {
   const [activeCategories, setActiveCategories] = useState<string[]>([])
   const [activeTags, setActiveTags] = useState<string[]>([])
   const [selectedSort, setSelectedSort] = useState('Most Popular')
-
-  // Trigger automatic cleanup check on page load
-  useEffect(() => {
-    const triggerCleanup = async () => {
-      try {
-        await callFn('cleanup-expired-listings', { method: 'POST' })
-      } catch (error) {
-        // Silent fail - cleanup will run next time
-        console.debug('Cleanup check skipped')
-      }
-    }
-
-    triggerCleanup()
-  }, [])
 
   const handleClearAll = () => {
     setSearchQuery('')

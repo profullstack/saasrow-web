@@ -91,7 +91,7 @@ export function llmsTxt(opts: {
     '',
     '## Listing a product',
     '',
-    `Listing is free. A free listing goes live once it is approved and the product's website links back to its SaaSRow page; the embeddable badge (\`${base}/software/{id}/badge.svg\`, HTML from \`GET /api/v1/listings/{id}/badge\`, the \`get_badge\` MCP tool or \`saasrow badge <id>\`) is the easy way. It stays live while the link is there. Featured ($2, once) and Premium listings need no badge.`,
+    `Listing is free. A free listing goes live once it is approved and the product's website links back to its SaaSRow page; the embeddable badge (\`${base}/software/{id}/badge.svg\`, HTML from \`GET /api/v1/listings/{id}/badge\`, the \`get_badge\` MCP tool or \`saasrow badge <id>\`) is the easy way. It stays live while the link is there. Featured ($2 lifetime) and Premium listings need no badge.`,
     '',
     '## Categories',
     '',

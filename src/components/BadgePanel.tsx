@@ -95,7 +95,7 @@ export function BadgePanel({ listing, managementToken, onChecked, className = ''
             <>
               Free listings are live while <span className="text-white break-all">{listing.url}</span> links back to its
               SaaSRow page. Paste this where it appears in the page&apos;s HTML (the footer works). Or{' '}
-              <a href="/featured" className="text-[#E0FF04] underline">go Featured for $2, once</a>: no badge needed.
+              <a href="/featured" className="text-[#E0FF04] underline">go Featured for $2 lifetime</a>: no badge needed.
             </>
           )}
       </p>
