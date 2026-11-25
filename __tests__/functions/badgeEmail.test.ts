@@ -13,9 +13,15 @@ const listing = {
 
 describe('badgeHtml', () => {
   it('is the same snippet the manage page hands out, and the checker accepts it', () => {
+    // No URL known: addressed by id.
     const plain = { id: listing.id, title: 'Acme' }
     expect(badgeHtml(plain, SITE)).toBe(badgeSnippets(plain, SITE).dark.html)
-    expect(linksBack(badgeHtml(listing, `${SITE}/`), listing.id, SITE)).toBe(true)
+    expect(linksBack(badgeHtml(plain, `${SITE}/`), listing.id, SITE)).toBe(true)
+    // With the listing's URL: addressed by its domain, the form a shared footer uses.
+    const withUrl = { id: listing.id, title: 'Acme', url: 'https://www.acme.test/app' }
+    expect(badgeHtml(withUrl, SITE)).toBe(badgeSnippets(withUrl, SITE).dark.html)
+    expect(badgeHtml(withUrl, SITE)).toContain(`${SITE}/for?site=acme.test`)
+    expect(linksBack(badgeHtml(withUrl, SITE), listing.id, SITE, withUrl.url)).toBe(true)
   })
 })
 
@@ -24,10 +30,10 @@ describe('badgeEmail', () => {
     const email = await badgeEmail('notice', listing, SITE, { seed: 'a@acme.test' })
     expect(email.subject).toBe('Add the SaaSRow badge to keep Acme CRMhttps://evil.test listed')
     expect(email.html).toContain('December 9, 2026')
-    expect(email.html).toContain(`${SITE}/software/${listing.id}/badge.svg`)
+    expect(email.html).toContain(`${SITE}/for.svg?site=acme.test`)
     expect(email.html).toContain(`${SITE}/manage/ab%2Bc%2Fd%3D`)
     expect(email.html).toContain(`${SITE}/featured`)
-    expect(email.text).toContain(`<a href="${SITE}/software/${listing.id}">`)
+    expect(email.text).toContain(`<a href="${SITE}/for?site=acme.test">`)
     expect(email.from).toBe('SaaSRow <noreply@saasrow.com>')
     expect(email.reply_to).toBe('support@saasrow.com')
   })
@@ -49,7 +55,7 @@ describe('badgeEmail', () => {
     const lapsed = await badgeEmail('required', listing, SITE, { wasLive: true })
     expect(lapsed.subject).toMatch(/is hidden on SaaSRow until the badge is on your site$/)
     expect(lapsed.text).toContain('Nothing is lost')
-    for (const email of [fresh, lapsed]) expect(email.text).toContain('badge.svg')
+    for (const email of [fresh, lapsed]) expect(email.text).toContain('/for.svg?site=acme.test')
   })
 
   it('live: links the listing, and says to keep the badge when one was found', async () => {

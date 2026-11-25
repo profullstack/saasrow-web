@@ -2,7 +2,7 @@ import 'server-only'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { siteUrl } from './structuredData'
 import { safeFetch, type SafeFetch } from './safeFetch'
-import { BADGE_HOSTS, badgeAdvice, badgeSnippets, badgeState, linksBack, type BadgeColumns, type BadgeListing } from './badgeShared'
+import { BADGE_HOSTS, badgeAdvice, badgeSnippets, badgeState, linksBack, siteHost, type BadgeColumns, type BadgeListing } from './badgeShared'
 import { fetchOwned } from './listings'
 import type { ApiPrincipal } from './apiAuth'
 
@@ -33,6 +33,42 @@ export async function badgeListing(id: string): Promise<BadgeListing | null> {
   const row = data as (BadgeListing & { status: string }) | null
   // A pending listing gets its real badge: the owner has to place it before going live.
   return row && row.status !== 'rejected' ? row : null
+}
+
+const STATUS_RANK: Record<string, number> = { approved: 0, adult: 0, badge_required: 1, pending: 2 }
+
+/**
+ * The listing for a site, by its domain: what /for.svg?site= and /for?site=
+ * resolve. `www.` is the same site. With several listings on one host, the one
+ * at the site root wins, then live ones, then the most upvoted. Rejected
+ * listings never match.
+ */
+export async function badgeListingBySite(site: string): Promise<(BadgeListing & { status: string; url: string }) | null> {
+  const host = siteHost(site)
+  if (!host || !/^[a-z0-9.-]+(:\d+)?$/.test(host)) return null
+  const like = ['https://', 'https://www.', 'http://', 'http://www.'].map((p) => `url.ilike.${p}${host}*`).join(',')
+  const { data } = await getSupabaseAdmin()
+    .from('software_submissions')
+    .select('id, title, upvotes, status, url')
+    .or(like)
+    .neq('status', 'rejected')
+    .limit(50)
+  const rows = ((data ?? []) as Array<BadgeListing & { status: string; url: string }>).filter((r) => siteHost(r.url) === host)
+  if (rows.length === 0) return null
+  const atRoot = (url: string) => {
+    try {
+      return new URL(url).pathname.replace(/\/+$/, '') === '' ? 0 : 1
+    } catch {
+      return 1
+    }
+  }
+  rows.sort(
+    (a, b) =>
+      atRoot(a.url) - atRoot(b.url) ||
+      (STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3) ||
+      (Number(b.upvotes) || 0) - (Number(a.upvotes) || 0),
+  )
+  return rows[0]
 }
 
 export interface BadgeCheckRow {
@@ -85,7 +121,7 @@ export async function checkBadge(
       const res = await fetchFn(page, { accept: 'text/html' })
       if (res.status >= 400) continue
       reachable = true
-      if (linksBack(res.text, row.id, site)) {
+      if (linksBack(res.text, row.id, site, row.url)) {
         found = page
         break
       }
