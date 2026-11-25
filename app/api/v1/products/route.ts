@@ -5,7 +5,10 @@ import {
   corsPreflight,
   intParam,
   stringParam,
+  errorToResponse,
 } from '@/lib/publicApi'
+import { ADULT_HEADERS, listAdultListings, requireAdultAccess } from '@/lib/adult'
+import { isAdultCategory } from '@/lib/adultShared'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,6 +19,26 @@ export function OPTIONS() {
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const params = url.searchParams
+
+  // The Adult (18+) category is members-only and lives apart from the public
+  // directory: an explicit category=adult from a signed-in caller, nothing else.
+  if (isAdultCategory(stringParam(params, 'category'))) {
+    try {
+      await requireAdultAccess(req)
+      const page = await listAdultListings({
+        q: stringParam(params, 'q'),
+        sort: stringParam(params, 'sort') === 'popular' ? 'popular' : 'recent',
+        limit: intParam(params, 'limit'),
+        offset: intParam(params, 'offset'),
+      })
+      return jsonResponse(
+        { data: page.items, pagination: { total: page.total, limit: page.limit, offset: page.offset, next: page.next } },
+        { headers: ADULT_HEADERS },
+      )
+    } catch (error) {
+      return errorToResponse(error, 'api/v1/products?category=adult')
+    }
+  }
 
   try {
     const page = await queryProducts({

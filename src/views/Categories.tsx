@@ -6,6 +6,8 @@ import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import { AdUnit } from '../components/AdUnit'
 import { callFn } from '@/lib/clientApi'
+import { useMember } from '@/lib/member'
+import { ADULT_LABEL, ADULT_PATH } from '@/lib/adultShared'
 
 interface CategoryCount {
   name: string
@@ -19,6 +21,8 @@ interface CategoriesPageProps {
 export default function CategoriesPage({ initialCategories }: CategoriesPageProps = {}) {
   const [categories, setCategories] = useState<CategoryCount[]>(initialCategories ?? [])
   const [loading, setLoading] = useState(initialCategories === undefined)
+  // Members see a way into the Adult (18+) category; it is never counted or listed for anyone else.
+  const { member } = useMember()
 
   useEffect(() => {
     if (initialCategories === undefined) {
@@ -89,6 +93,15 @@ export default function CategoriesPage({ initialCategories }: CategoriesPageProp
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {member && (
+                <Link
+                  href={ADULT_PATH}
+                  className="group bg-[#3a3a3a] rounded-2xl p-8 hover:bg-[#404040] transition-all hover:scale-105 block"
+                >
+                  <h3 className="text-white text-2xl font-bold font-ubuntu mb-2">{ADULT_LABEL}</h3>
+                  <p className="text-white/60 font-ubuntu">Members only</p>
+                </Link>
+              )}
               {categories.map((category, index) => (
                 <Link
                   key={category.name}

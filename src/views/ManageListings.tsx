@@ -803,14 +803,14 @@ export default function ManageListings() {
                         )}
                         <span
                           className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
-                            submission.status === 'approved'
+                            submission.status === 'approved' || submission.status === 'adult'
                               ? 'bg-green-100 text-green-800'
                               : submission.status === 'rejected'
                               ? 'bg-red-100 text-red-800'
                               : 'bg-yellow-100 text-yellow-800'
                           }`}
                         >
-                          {submission.status === 'badge_required' ? 'needs badge' : submission.status}
+                          {submission.status === 'badge_required' ? 'needs badge' : submission.status === 'adult' ? 'live, adult (18+)' : submission.status}
                         </span>
                         <button
                           onClick={() => handleEdit(submission)}

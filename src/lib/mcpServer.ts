@@ -31,6 +31,8 @@ import { ApiError } from './publicApi'
 import { LISTING_LIMITS } from './listingInput'
 import type { ApiPrincipal } from './apiAuth'
 import { checkOwnedBadge, getOwnedBadge } from './badge'
+import { getAdultListing, isAdultListing, listAdultListings } from './adult'
+import { ADULT_SIGN_IN_MESSAGE, isAdultCategory } from './adultShared'
 import { karmaRules, karmaSummary, leaderboard, redeemCredit } from './karma'
 import { KARMA_PER_CREDIT, parsePeriod } from './karmaRules'
 import { createInviteFor, inviteOverview, redeemCreditCode } from './credits'
@@ -114,7 +116,11 @@ export const READ_TOOLS = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Free-text search over name and description.' },
-        category: { type: 'string', description: 'Category name.' },
+        category: {
+          type: 'string',
+          description:
+            'Category name. The Adult (18+) category is returned only for category "adult" on a connection authenticated with an API key.',
+        },
         use_case: { type: 'string', description: VOCAB_HINT },
         audience: { type: 'string', description: VOCAB_HINT },
         platform: { type: 'string', description: VOCAB_HINT },
@@ -384,6 +390,16 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
 
   switch (name) {
     case 'search_products': {
+      // Adult (18+): members-only, and only when asked for by name.
+      if (isAdultCategory(args.category)) {
+        if (!ctx.principal) return toolError(ADULT_SIGN_IN_MESSAGE)
+        const adult = await listAdultListings({
+          q: typeof args.query === 'string' ? args.query : undefined,
+          sort: args.sort === 'popular' ? 'popular' : 'recent',
+          limit: typeof args.limit === 'number' ? args.limit : 10,
+        })
+        return toolResult({ total: adult.total, returned: adult.items.length, products: adult.items })
+      }
       const page = await queryProducts({
         q: typeof args.query === 'string' ? args.query : undefined,
         category: typeof args.category === 'string' ? args.category : undefined,
@@ -407,7 +423,13 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
       const id = requireId(args)
       if (!id) return toolError('get_product requires a string "id" argument.')
       const product = await getProduct(id)
-      if (!product) return toolError(`No approved product found with id ${id}.`)
+      if (!product) {
+        if (await isAdultListing(id)) {
+          if (!ctx.principal) return toolError(ADULT_SIGN_IN_MESSAGE)
+          return toolResult(await getAdultListing(id))
+        }
+        return toolError(`No approved product found with id ${id}.`)
+      }
       return toolResult(serializeProduct(product))
     }
     case 'list_categories':
