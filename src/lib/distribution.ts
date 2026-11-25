@@ -1,3 +1,4 @@
+import { hasEnhancedTier } from './enhanced'
 import 'server-only'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { fetchAllRows } from './fetchAllRows'
@@ -54,6 +55,8 @@ export const PUBLIC_COLUMNS = [
   'featured',
   'created_at',
   'updated_at',
+  'tier',
+  'enhanced',
 ].join(', ')
 
 function clampLimit(limit: number | undefined): number {
@@ -224,6 +227,9 @@ export function serializeProduct(submission: Submission) {
     downvotes: submission.downvotes ?? 0,
     views: submission.view_count ?? 0,
     featured: Boolean(submission.featured),
+    tier: submission.tier ?? 'free',
+    // Featured and Premium listings: overview, features, pricing, who it is for.
+    enhanced: hasEnhancedTier(submission.tier) ? (submission.enhanced ?? null) : null,
     created_at: submission.created_at ?? null,
     updated_at: submission.updated_at ?? null,
   }

@@ -9,6 +9,7 @@ import { siteUrl } from './structuredData'
 import type { Submission } from './submissions'
 import type { ApiPrincipal } from './apiAuth'
 import { badgeAdvice, badgeSnippets, badgeState } from './badgeShared'
+import { ENHANCED_PITCH, hasEnhancedTier, type EnhancedListing } from './enhanced'
 
 // Owned-listing operations behind the authenticated API, the MCP write tools
 // and the CLI. Everything here is scoped to the caller's user id; a listing
@@ -17,7 +18,7 @@ import { badgeAdvice, badgeSnippets, badgeState } from './badgeShared'
 /** How many not-yet-approved listings one account may hold. Spam brake. */
 export const MAX_PENDING_LISTINGS = 25
 
-const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, status, tier, expires_at, management_token, submitted_at, badge_verified_at, badge_checked_at, badge_grace_until, badge_exempt`
+const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, status, tier, expires_at, management_token, submitted_at, badge_verified_at, badge_checked_at, badge_grace_until, badge_exempt, enhanced`
 
 type OwnedRow = Submission & {
   status: string
@@ -29,6 +30,7 @@ type OwnedRow = Submission & {
   badge_checked_at?: string | null
   badge_grace_until?: string | null
   badge_exempt?: boolean | null
+  enhanced?: EnhancedListing | null
 }
 
 /** The public product shape plus the owner-only fields. */
@@ -41,6 +43,8 @@ export function serializeOwnedListing(row: OwnedRow) {
     expires_at: row.expires_at ?? null,
     submitted_at: row.submitted_at ?? row.created_at ?? null,
     manage_url: row.management_token ? `${base}/manage/${encodeURIComponent(row.management_token)}` : null,
+    // Featured and Premium: the long-form sections on the listing page.
+    enhanced: hasEnhancedTier(row.tier) ? (row.enhanced ?? null) : null,
     // Free listings are live only while their site carries the badge
     // (status 'badge_required' = approved, hidden until it does).
     badge: {
@@ -137,6 +141,7 @@ export async function createListing(principal: ApiPrincipal, input: unknown) {
   const validation = validateListingInput(input)
   if (!validation.ok) throw new ApiError(400, validation.errors.join('; '))
   const fields = validation.value as ListingFields
+  delete fields.enhanced // a new listing is free; the sections come with Featured and Premium
 
   const supabase = getSupabaseAdmin()
   const { count } = await supabase
@@ -185,8 +190,11 @@ export async function updateOwnedListing(principal: ApiPrincipal, id: string, in
   if (!validation.ok) throw new ApiError(400, validation.errors.join('; '))
   const patch = validation.value
 
-  await fetchOwned(principal, id)
+  const current = await fetchOwned(principal, id)
   if (patch.url) await assertUrlFree(patch.url, id)
+  if (patch.enhanced && !hasEnhancedTier(current.tier)) {
+    throw new ApiError(403, `${ENHANCED_PITCH} comes with Featured ($2 lifetime) and Premium: ${siteUrl()}/featured`)
+  }
 
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase

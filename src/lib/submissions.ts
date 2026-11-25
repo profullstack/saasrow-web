@@ -30,6 +30,8 @@ export interface Submission {
   platforms?: string[]
   pricing_model?: string
   alternatives?: string[]
+  /** Featured and Premium listings: the long-form sections (src/lib/enhanced.ts). */
+  enhanced?: import('./enhanced').EnhancedListing | null
 }
 
 export interface CategoryCount {

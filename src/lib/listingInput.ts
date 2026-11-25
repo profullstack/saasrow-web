@@ -6,6 +6,7 @@
 // storage names (`title`, `url`) are accepted as aliases, since anyone who has
 // looked at the website's submit form will reach for those.
 
+import { cleanEnhanced, type EnhancedListing } from './enhanced'
 import {
   normalizeUseCases,
   normalizeAudiences,
@@ -37,6 +38,8 @@ export interface ListingFields {
   platforms: string[]
   pricing_model: string | null
   alternatives: string[]
+  /** Featured and Premium listings only: overview, features, pricing, who it is for. */
+  enhanced?: EnhancedListing | null
 }
 
 export type ListingValidation =
@@ -172,6 +175,10 @@ export function validateListingInput(
   if (body.alternatives !== undefined || !partial) {
     value.alternatives = normalizeAlternatives(body.alternatives)
   }
+
+  // Sending {} or null clears the enhanced sections. Whether the listing's
+  // tier may have them is the caller's check (it needs the stored tier).
+  if (body.enhanced !== undefined) value.enhanced = cleanEnhanced(body.enhanced)
 
   if (partial && Object.keys(value).length === 0 && errors.length === 0) {
     errors.push('nothing to update')
