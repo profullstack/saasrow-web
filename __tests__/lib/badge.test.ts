@@ -162,6 +162,9 @@ describe('checkBadge', () => {
     expect(pagesToCheck('https://acme.test/app')).toEqual(['https://acme.test/app', 'https://acme.test/'])
     expect(pagesToCheck('https://acme.test')).toEqual(['https://acme.test/'])
     expect(pagesToCheck('https://acme.test/')).toEqual(['https://acme.test/'])
+    // SaaSRow's own pages name each listing in their canonical link: never a backlink.
+    expect(pagesToCheck(`https://saasrow.com/software/${ID}`)).toEqual([])
+    expect(pagesToCheck(`https://www.saasrow.pwa.pit.world/software/${ID}`, SITE)).toEqual([])
   })
 
   it('verifies when either page links back', async () => {

@@ -2,7 +2,7 @@ import 'server-only'
 import { getSupabaseAdmin } from './supabaseAdmin'
 import { siteUrl } from './structuredData'
 import { safeFetch, type SafeFetch } from './safeFetch'
-import { badgeAdvice, badgeSnippets, badgeState, linksBack, type BadgeColumns, type BadgeListing } from './badgeShared'
+import { BADGE_HOSTS, badgeAdvice, badgeSnippets, badgeState, linksBack, type BadgeColumns, type BadgeListing } from './badgeShared'
 import { fetchOwned } from './listings'
 import type { ApiPrincipal } from './apiAuth'
 
@@ -55,9 +55,18 @@ export interface BadgeCheckResult {
 }
 
 /** The listing's URL and its site root: where a footer badge would be. */
-export function pagesToCheck(url: string): string[] {
+export function pagesToCheck(url: string, site = siteUrl()): string[] {
   try {
     const u = new URL(url)
+    // A listing whose URL is SaaSRow itself would "link back" through our own
+    // pages (every listing page names itself in its canonical link).
+    const ours = new Set(BADGE_HOSTS)
+    try {
+      ours.add(new URL(site).host.replace(/^www\./, '').toLowerCase())
+    } catch {
+      // not a URL: the built-in hosts still apply
+    }
+    if (ours.has(u.host.replace(/^www\./, '').toLowerCase())) return []
     return [...new Set([u.href, `${u.origin}/`])]
   } catch {
     return [url] // the submitted URL is all we have
@@ -68,7 +77,7 @@ export async function checkBadge(
   row: BadgeCheckRow,
   { fetchFn = safeFetch, site = siteUrl() }: { fetchFn?: SafeFetch; site?: string } = {},
 ): Promise<BadgeCheckResult> {
-  const looked = pagesToCheck(row.url)
+  const looked = pagesToCheck(row.url, site)
   let found: string | null = null
   let reachable = false
   for (const page of looked) {

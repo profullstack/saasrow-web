@@ -128,8 +128,8 @@ Deno.serve(async (req: Request) => {
                       <li>📸 <strong>Screenshot gallery</strong> - Show off your product</li>
                       <li>📧 <strong>Newsletter featuring</strong> - Reach 200K+ subscribers (Premium)</li>
                     </ul>
-                    <p><strong>Featured Tier:</strong> Only $1.60/month (billed annually)</p>
-                    <p><strong>Premium Tier:</strong> Only $4.17/month (billed annually)</p>
+                    <p><strong>Featured Tier:</strong> $2 lifetime (one payment, never renews, no badge needed)</p>
+                    <p><strong>Premium Tier:</strong> $5/month, $20/year or $199 lifetime</p>
                     <p>Questions? Just reply to this email - we're here to help!</p>
                     <p>Best regards,<br>The SaaSRow Team</p>
                   </div>
