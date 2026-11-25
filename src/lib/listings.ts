@@ -8,6 +8,7 @@ import { callEdgeFunction } from './edgeProxy'
 import { siteUrl } from './structuredData'
 import type { Submission } from './submissions'
 import type { ApiPrincipal } from './apiAuth'
+import { badgeAdvice, badgeSnippets, badgeState } from './badgeShared'
 
 // Owned-listing operations behind the authenticated API, the MCP write tools
 // and the CLI. Everything here is scoped to the caller's user id; a listing
@@ -16,7 +17,7 @@ import type { ApiPrincipal } from './apiAuth'
 /** How many not-yet-approved listings one account may hold. Spam brake. */
 export const MAX_PENDING_LISTINGS = 25
 
-const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, status, tier, expires_at, management_token, submitted_at`
+const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, status, tier, expires_at, management_token, submitted_at, badge_verified_at, badge_checked_at, badge_grace_until, badge_exempt`
 
 type OwnedRow = Submission & {
   status: string
@@ -24,6 +25,10 @@ type OwnedRow = Submission & {
   expires_at?: string | null
   management_token?: string | null
   submitted_at?: string | null
+  badge_verified_at?: string | null
+  badge_checked_at?: string | null
+  badge_grace_until?: string | null
+  badge_exempt?: boolean | null
 }
 
 /** The public product shape plus the owner-only fields. */
@@ -36,6 +41,13 @@ export function serializeOwnedListing(row: OwnedRow) {
     expires_at: row.expires_at ?? null,
     submitted_at: row.submitted_at ?? row.created_at ?? null,
     manage_url: row.management_token ? `${base}/manage/${encodeURIComponent(row.management_token)}` : null,
+    // Free listings are live only while their site carries the badge
+    // (status 'badge_required' = approved, hidden until it does).
+    badge: {
+      ...badgeState(row),
+      html: badgeSnippets(row, base).dark.html,
+      how: badgeAdvice(row, base),
+    },
   }
 }
 
@@ -85,7 +97,7 @@ export async function listOwnedListings(principal: ApiPrincipal) {
   return ((data ?? []) as unknown as OwnedRow[]).map(serializeOwnedListing)
 }
 
-async function fetchOwned(principal: ApiPrincipal, id: string): Promise<OwnedRow> {
+export async function fetchOwned(principal: ApiPrincipal, id: string): Promise<OwnedRow> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new ApiError(404, 'No such listing')
   const supabase = getSupabaseAdmin()
   const { data, error } = await supabase

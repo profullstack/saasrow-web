@@ -54,6 +54,8 @@ saasrow listings list
 saasrow listings get <id>
 saasrow listings update <id> --description "…"
 saasrow listings delete <id>
+saasrow badge <id>            # the badge a free listing needs on its site
+saasrow badge <id> --check    # re-check the site now; exit 1 while it is missing
 ```
 
 A new listing is reviewed before it appears in the directory, exactly like a

@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 import VocabPicker from '../components/VocabPicker'
+import { BadgePanel } from '../components/BadgePanel'
 import {
   USE_CASES,
   AUDIENCES,
@@ -63,6 +64,8 @@ export default function SubmitPage() {
   const [fetchedImagePath, setFetchedImagePath] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  // Free listings just submitted: each needs its badge on the site to go live.
+  const [submittedListings, setSubmittedListings] = useState<Array<{ id: string; title: string; url: string; tier?: string }>>([])
   const [showEmailDialog, setShowEmailDialog] = useState(false)
   const [emailInput, setEmailInput] = useState('')
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -282,6 +285,7 @@ export default function SubmitPage() {
           setMessage({ type: 'success', text: 'Changes saved!' })
         } else {
           setMessage({ type: 'success', text: 'Software submitted successfully!' })
+          if (data?.data?.id) setSubmittedListings((prev) => [...prev, { id: data.data.id, title: data.data.title, url: data.data.url, tier: data.data.tier }])
         }
       } else if (response.status === 402) {
         setMessage({ type: 'error', text: SUBMIT_LIMIT_MESSAGE })
@@ -396,6 +400,8 @@ export default function SubmitPage() {
 
           if (response.ok) {
             successCount++
+            const created = (await response.json().catch(() => null))?.data
+            if (created?.id) setSubmittedListings((prev) => [...prev, { id: created.id, title: created.title, url: created.url, tier: created.tier }])
           } else if (response.status === 402) {
             limited = true
             break
@@ -607,6 +613,10 @@ export default function SubmitPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-[#4FFFE3] mt-0.5">✓</span>
+                      <span><strong>No badge required</strong> on your site</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#4FFFE3] mt-0.5">✓</span>
                       <span>Dofollow backlink</span>
                     </li>
                     <li className="flex items-start gap-2">
@@ -690,12 +700,14 @@ export default function SubmitPage() {
                         <li>• Basic listing page</li>
                         <li>• Community visibility</li>
                         <li>• Standard review time (7-10 days)</li>
+                        <li className="text-yellow-400">⚠️ Goes live once your site carries the SaaSRow badge (one line of HTML)</li>
                         <li className="text-yellow-400">⚠️ Expires after 90 days (renewable)</li>
                       </>
                     )}
                     {userTier === 'featured' && (
                       <>
                         <li className="text-[#4FFFE3] font-semibold">• No expiration - Permanent listings</li>
+                        <li className="text-[#4FFFE3] font-semibold">• No SaaSRow badge required on your site</li>
                         <li>• Dofollow backlink</li>
                         <li>• Up to 5 software listings</li>
                         <li>• Featured badge on listings</li>
@@ -714,7 +726,7 @@ export default function SubmitPage() {
                       <span>
                         <strong className="text-white">Need more?</strong>
                         <br />
-                        Upgrade to <span className="text-[#E0FF04]">Featured</span> for permanent listings (no expiration), 5 URLs, priority review, featured badge, and analytics!
+                        Upgrade to <span className="text-[#E0FF04]">Featured</span> for permanent listings (no expiration, no badge on your site), 5 URLs, priority review, featured badge, and analytics!
                       </span>
                     </p>
                   </div>
@@ -741,6 +753,16 @@ export default function SubmitPage() {
                       <p className="text-white/70 font-ubuntu text-sm">
                         Please check your spam folder if you don't see the email within a few minutes.
                       </p>
+                    </div>
+                  )}
+                  {message.type === 'success' && submittedListings.length > 0 && (
+                    <div className="mt-6 text-left">
+                      <p className="text-white font-ubuntu font-bold mb-3">
+                        One more step: put the badge on your site. Free listings go live once they are approved and the badge is there.
+                      </p>
+                      {submittedListings.map((listing) => (
+                        <BadgePanel key={listing.id} listing={listing} />
+                      ))}
                     </div>
                   )}
                 </div>

@@ -30,6 +30,7 @@ import { siteUrl } from './structuredData'
 import { ApiError } from './publicApi'
 import { LISTING_LIMITS } from './listingInput'
 import type { ApiPrincipal } from './apiAuth'
+import { checkOwnedBadge, getOwnedBadge } from './badge'
 import { karmaRules, karmaSummary, leaderboard, redeemCredit } from './karma'
 import { KARMA_PER_CREDIT, parsePeriod } from './karmaRules'
 import { createInviteFor, inviteOverview, redeemCreditCode } from './credits'
@@ -179,7 +180,7 @@ const AUTH_NOTE =
 export const WRITE_TOOLS = [
   {
     name: 'create_listing',
-    description: `Submit a free listing for a product you make. It is reviewed before it appears in the directory. ${AUTH_NOTE}`,
+    description: `Submit a free listing for a product you make. It is reviewed before it appears in the directory, and a free listing goes live only once the product's website carries the SaaSRow badge (see get_badge; Featured and Premium listings do not need it). ${AUTH_NOTE}`,
     inputSchema: {
       type: 'object',
       properties: LISTING_PROPERTIES,
@@ -195,6 +196,26 @@ export const WRITE_TOOLS = [
   {
     name: 'get_my_listing',
     description: `Fetch one of your own listings by id, whatever its review status. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'The listing id (uuid).' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'get_badge',
+    description: `The SaaSRow badge for one of your listings: whether it is required and verified, the HTML and Markdown to paste on the product's website, and what to do next. A free listing is live only while its website links back. ${AUTH_NOTE}`,
+    inputSchema: {
+      type: 'object',
+      properties: { id: { type: 'string', description: 'The listing id (uuid).' } },
+      required: ['id'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'check_badge',
+    description: `Fetch the listing's website now and record whether it links back to its SaaSRow page, instead of waiting for the daily check. An approved listing hidden for a missing badge goes live on success. ${AUTH_NOTE}`,
     inputSchema: {
       type: 'object',
       properties: { id: { type: 'string', description: 'The listing id (uuid).' } },
@@ -426,6 +447,16 @@ async function callTool(name: string, args: Record<string, unknown>, ctx: McpCon
       if (!id) return toolError('get_my_listing requires a string "id" argument.')
       return toolResult(await getOwnedListing(principal, id))
     }
+    case 'get_badge': {
+      const id = requireId(args)
+      if (!id) return toolError('get_badge requires a string "id" argument.')
+      return toolResult(await getOwnedBadge(principal, id))
+    }
+    case 'check_badge': {
+      const id = requireId(args)
+      if (!id) return toolError('check_badge requires a string "id" argument.')
+      return toolResult(await checkOwnedBadge(principal, id))
+    }
     case 'update_listing': {
       const { id, ...patch } = args
       if (typeof id !== 'string' || !id) return toolError('update_listing requires a string "id" argument.')
@@ -509,7 +540,7 @@ export async function handleMcpMessage(
       return ok(id, {
         protocolVersion,
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'saasrow', version: '1.2.0', websiteUrl: siteUrl() },
+        serverInfo: { name: 'saasrow', version: '1.3.0', websiteUrl: siteUrl() },
         instructions:
           'SaaSRow is a directory of software and SaaS products. Use search_products to find tools by use case, audience, platform, pricing model, or as an alternative to a named competitor. Call get_vocabulary first if you need the exact filter terms. ' +
           'With an API key you can also create_listing for a product you make and manage it with list_my_listings, update_listing and delete_listing, and check my_karma. ' +

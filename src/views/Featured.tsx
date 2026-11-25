@@ -90,6 +90,7 @@ export default function FeaturedPage() {
         'Basic listing page',
         'Community visibility',
         'Standard review time (7-10 days)',
+        '⚠️ Requires the SaaSRow badge on your site to go live and stay live',
         '⚠️ Expires after 90 days (renewable)',
       ],
     },
@@ -104,6 +105,7 @@ export default function FeaturedPage() {
       features: [
         '✅ One-time payment - no recurring fees',
         '✅ No expiration - Permanent listings',
+        '✅ No badge required on your site',
         'Dofollow backlink',
         'Up to 5 software listings',
         'Featured badge on listings',
@@ -124,6 +126,7 @@ export default function FeaturedPage() {
       features: [
         '✅ $5/month, $20/year or $199 lifetime',
         '✅ Unlimited submissions: no daily cap, no review-queue cap',
+        '✅ No badge required on your site',
         'Bulk listing through the API and CLI',
         'Dofollow backlink',
         'Unlimited software listings',

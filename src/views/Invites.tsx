@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { AdUnit } from '../components/AdUnit'
 import Link from 'next/link'
 import { Gift } from 'lucide-react'
 import { Header } from '../components/Header'
@@ -119,6 +120,8 @@ export default function InvitesPage() {
               {data?.bonus_days ?? 7} days of Premium.
             </p>
           </div>
+
+          <AdUnit />
 
           {!member ? (
             <section className="bg-[#3a3a3a] rounded-2xl p-8 text-center">

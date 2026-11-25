@@ -1,4 +1,5 @@
 import { Header } from '../components/Header'
+import { AdUnit } from '../components/AdUnit'
 import { Footer } from '../components/Footer'
 
 export default function AboutPage() {
@@ -14,6 +15,8 @@ export default function AboutPage() {
 
         <main className="w-full max-w-[1000px] mx-auto px-4 py-12">
           <h1 className="text-white text-5xl font-bold font-ubuntu mb-8">About SaaSRow</h1>
+
+          <AdUnit className="mt-0 mb-6" />
 
           <div className="bg-[#3a3a3a] rounded-2xl p-8 mb-6">
             <p className="text-white/90 font-ubuntu text-xl leading-relaxed mb-6">

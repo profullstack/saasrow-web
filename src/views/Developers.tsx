@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdUnit } from '../components/AdUnit'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 
@@ -89,6 +90,8 @@ export default function DevelopersPage({ siteUrl }: Props) {
             listings needs an account, which is just an email address and a one-time code. One
             API key works everywhere: the CLI, the REST API and the MCP server.
           </p>
+
+          <AdUnit className="mt-0 mb-8" />
 
           <nav className="flex flex-wrap gap-3 mb-10">
             {nav.map(([id, label]) => (
@@ -203,6 +206,8 @@ claude mcp add --transport http saasrow ${siteUrl}/api/mcp \\
                   <Row method="write" path="create_listing" what="Submit a free listing for review." />
                   <Row method="write" path="list_my_listings" what="Everything your account owns, any status." />
                   <Row method="write" path="get_my_listing" what="One of yours, any status." />
+                  <Row method="write" path="get_badge" what="The badge a free listing needs on its site: state, HTML, Markdown." />
+                  <Row method="write" path="check_badge" what="Re-check the site for the badge now." />
                   <Row method="write" path="update_listing" what="Change any subset of fields." />
                   <Row method="write" path="delete_listing" what="Permanent." />
                 </tbody>
@@ -227,6 +232,8 @@ claude mcp add --transport http saasrow ${siteUrl}/api/mcp \\
                   <Row method="GET" path="/api/v1/me" what="The account behind your key." />
                   <Row method="GET POST" path="/api/v1/listings" what="Your listings, any status; submit a new one." />
                   <Row method="GET PATCH DELETE" path="/api/v1/listings/{id}" what="One of yours." />
+                  <Row method="GET" path="/api/v1/listings/{id}/badge" what="The badge a free listing needs on its site, and whether it is verified." />
+                  <Row method="POST" path="/api/v1/listings/{id}/badge/check" what="Re-check the site for the badge now." />
                   <Row method="GET POST" path="/api/v1/keys" what="List keys (prefix only); create one, returned once." />
                   <Row method="PATCH DELETE" path="/api/v1/keys/{id}" what="Rename; revoke." />
                   <Row method="POST" path="/api/v1/auth/cli" what="{ email } → we email a code." />

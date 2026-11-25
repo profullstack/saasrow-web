@@ -1,4 +1,5 @@
 import { Header } from '../components/Header'
+import { AdUnit } from '../components/AdUnit'
 import { Footer } from '../components/Footer'
 import type { DistributionStats } from '../lib/distribution'
 
@@ -64,6 +65,8 @@ export default function DistributionPage({ stats, siteUrl, botCount }: Props) {
             that wants it — with no API key and no paywall on any of those channels. And
             you can create and manage your listing from the terminal or an AI agent, free.
           </p>
+
+          <AdUnit className="mt-0 mb-10" />
 
           <h2 className="text-white text-3xl font-bold font-ubuntu mb-6">
             Your product is found across every channel at once

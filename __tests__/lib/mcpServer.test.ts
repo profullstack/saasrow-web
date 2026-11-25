@@ -162,11 +162,13 @@ describe('tools/list', () => {
     const res = await handleMcpMessage({ id: 1, method: 'tools/list' })
     const tools = resultOf(res).tools as Array<{ name: string; inputSchema: unknown }>
     expect(tools.map((t) => t.name).sort()).toEqual([
+      'check_badge',
       'create_invite',
       'create_listing',
       'create_webhook',
       'delete_listing',
       'delete_webhook',
+      'get_badge',
       'get_my_listing',
       'get_product',
       'get_vocabulary',

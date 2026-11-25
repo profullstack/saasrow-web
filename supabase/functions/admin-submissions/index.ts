@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === 'PATCH') {
       const body = await req.json()
-      const { id, status, tier } = body
+      const { id, status, tier, badge_exempt } = body
 
       if (!id) {
         return new Response(
@@ -74,6 +74,9 @@ Deno.serve(async (req: Request) => {
       const updates: any = {}
       if (status) updates.status = status
       if (tier) updates.tier = tier
+      // Waive the free tier's badge rule for this listing (our own sites, a
+      // hand-approved exception). The database then lets it go live.
+      if (typeof badge_exempt === 'boolean') updates.badge_exempt = badge_exempt
 
       const { data, error } = await supabase
         .from('software_submissions')
@@ -96,7 +99,13 @@ Deno.serve(async (req: Request) => {
       // screenshots filled in. This runs after the response is sent so a
       // slow screenshot provider never slows down (or fails) the approval;
       // the pg_cron sweep retries anything that does not complete.
-      if (status === 'approved' && data) {
+      //
+      // `data.status` is what the database saved, not what was asked for: a
+      // free listing whose site does not carry the badge comes back
+      // 'badge_required' (approved, hidden). It gets no "you are live" email
+      // here; the badge-emails function sends it the badge instead, and the
+      // live email once the badge is found.
+      if (data?.status === 'approved' && before?.status !== 'approved') {
         const run = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/complete-listing`, {
           method: 'POST',
           headers: {
@@ -112,7 +121,9 @@ Deno.serve(async (req: Request) => {
         if (runtime?.waitUntil) runtime.waitUntil(run)
         else await run
 
-        if (before?.status !== 'approved') {
+        // A listing coming out of 'badge_required' was already told by the
+        // badge emails; everything else gets the approval email, once.
+        if (before?.status !== 'badge_required') {
           const notify = notifyListingApproved(supabase, data.id)
           if (runtime?.waitUntil) runtime.waitUntil(notify)
           else await notify

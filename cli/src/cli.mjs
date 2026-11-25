@@ -33,6 +33,8 @@ Listings (require login)
   listings create --name … --website … --description … [more flags]
   listings update <id> [flags]
   listings delete <id> [--yes]
+  badge <id> [--check] [--light]            the badge a free listing needs on its site;
+                                            --check re-checks the site now
 
 API keys (require login)
   keys list [--all]                         active keys; --all includes revoked
@@ -236,6 +238,34 @@ async function keys({ client, positionals, flags, io }) {
 }
 
 // ---------------------------------------------------------------------------
+
+/** The badge a free listing must carry on its site to be live, and whether we have seen it. */
+async function badge({ client, positionals, flags, io }) {
+  needKey(client)
+  const [id] = positionals
+  if (!id) throw new UsageError('Usage: saasrow badge <id> [--check] [--light]')
+  const { data } = flags.check
+    ? await client.post(`/api/v1/listings/${id}/badge/check`, {})
+    : await client.get(`/api/v1/listings/${id}/badge`)
+  if (flags.json) return io.out(json(data)), 0
+  const state = !data.required
+    ? 'not required'
+    : data.verified
+      ? 'verified'
+      : data.hidden
+        ? 'missing (listing hidden)'
+        : 'not found yet'
+  io.out(`Badge: ${state}\n`)
+  if (flags.check) {
+    const pages = data.looked.join(' or ')
+    if (data.found_on) io.out(`Found on ${data.found_on}\n`)
+    else if (data.reachable) io.out(`No link to ${data.page} on ${pages}\n`)
+    else io.out(`Could not read ${pages}\n`)
+  }
+  if (data.required && !data.verified) io.out(`\n${flags.light ? data.html_light : data.html}\n\n`)
+  io.out(`${data.how}\n`)
+  return data.required && !data.verified && flags.check ? 1 : 0
+}
 
 async function listings({ client, positionals, flags, io }) {
   needKey(client)
@@ -605,7 +635,7 @@ async function webhooks({ client, positionals, flags, io }) {
   }
 }
 
-const COMMANDS = { login, logout, whoami, keys, listings, karma, leaderboard, redeem, invites, webhooks, search, categories, vocabulary }
+const COMMANDS = { login, logout, whoami, keys, listings, badge, karma, leaderboard, redeem, invites, webhooks, search, categories, vocabulary }
 
 /**
  * @param {string[]} argv

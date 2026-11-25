@@ -60,7 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           data-webmcp=""
           src="https://cdn.jsdelivr.net/npm/@profullstack/webmcp@0/src/embed.js"
           data-mcp="/api/mcp"
-          data-mcp-exclude="create_listing,list_my_listings,get_my_listing,update_listing,delete_listing,my_karma,redeem_credit_code,my_invites,create_invite,redeem_karma_credit,list_webhooks,create_webhook,update_webhook,delete_webhook,test_webhook,rotate_webhook_secret,webhook_deliveries"
+          data-mcp-exclude="create_listing,list_my_listings,get_my_listing,get_badge,check_badge,update_listing,delete_listing,my_karma,redeem_credit_code,my_invites,create_invite,redeem_karma_credit,list_webhooks,create_webhook,update_webhook,delete_webhook,test_webhook,rotate_webhook_secret,webhook_deliveries"
           data-search-api="/api/v1/products?q={query}&limit={limit}"
           data-pages='{"explore":"/explore","categories":"/categories","featured":"/featured","leaderboard":"/leaderboard","submit":"/submit","developers":"/developers","news":"/news"}'
         />

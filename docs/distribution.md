@@ -71,6 +71,8 @@ pins the vector.
 | `/api/v1/keys/{id}` | PATCH, DELETE | Rename; revoke |
 | `/api/v1/listings` | GET, POST | Everything you own, any status; submit a free listing |
 | `/api/v1/listings/{id}` | GET, PATCH, DELETE | One of yours |
+| `/api/v1/listings/{id}/badge` | GET | The badge a free listing needs on its site: state, HTML, Markdown |
+| `/api/v1/listings/{id}/badge/check` | POST | Re-check the site for the badge now |
 
 A listing created here is byte-for-byte what the website's submit form
 produces: `status = pending`, `tier = free`, a fresh `management_token`, a

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { AdUnit } from '../components/AdUnit'
 import { Header } from '../components/Header'
 import { Footer } from '../components/Footer'
 import type { CommunityPost } from '../lib/supabase'
@@ -76,6 +77,8 @@ export default function CommunityPage() {
               Connect with other developers, share your experiences, and learn from the community
             </p>
           </div>
+
+          <AdUnit />
 
           <TopKarma />
 
