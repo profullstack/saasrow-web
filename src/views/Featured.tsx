@@ -105,6 +105,7 @@ export default function FeaturedPage() {
       features: [
         '✅ $2 lifetime: one payment, no recurring fees',
         '✅ Permanent listings: no badge to keep on your site',
+        '✨ Enhanced listing: overview, feature list, pricing table and "who it\'s for" on your page',
         'Dofollow backlink',
         'Up to 5 software listings',
         'Featured badge on listings',
@@ -126,6 +127,7 @@ export default function FeaturedPage() {
         '✅ $5/month, $20/year or $199 lifetime',
         '✅ Unlimited submissions: no daily cap, no review-queue cap',
         '✅ No badge required on your site',
+        '✨ Enhanced listing on every listing: overview, features, pricing, who it\'s for',
         'Bulk listing through the API and CLI',
         'Dofollow backlink',
         'Unlimited software listings',

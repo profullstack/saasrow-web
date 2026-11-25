@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { EnhancedSections } from '../components/EnhancedSections'
+import { hasEnhancedTier, type EnhancedListing } from '../lib/enhanced'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Header } from '../components/Header'
@@ -37,6 +39,7 @@ interface Submission {
   downvotes?: number
   share_count?: number
   last_share_reset?: string
+  enhanced?: EnhancedListing | null
 }
 
 interface SoftwareDetailPageProps {
@@ -378,6 +381,8 @@ export default function SoftwareDetailPage({ initialSubmission }: SoftwareDetail
                 <p className="text-white/80 font-ubuntu text-lg leading-relaxed mb-6">
                   {submission.description}
                 </p>
+
+                {hasEnhancedTier(submission.tier) && <EnhancedSections data={submission.enhanced} />}
 
                 {submission.tags && submission.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-8">

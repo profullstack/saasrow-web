@@ -425,7 +425,28 @@ Deno.serve(async (req: Request) => {
 
     if (req.method === 'PATCH') {
       const body = await req.json()
-      const { id, token, ...updates } = body
+      const { id, token, ...sent } = body
+
+      // An owner edits what describes the product, nothing else. This used to
+      // write whatever the request carried, so a management token could set
+      // its own listing's status, tier or badge waiver: approve itself, take
+      // Premium for free, or skip the badge rule.
+      const EDITABLE = [
+        'title', 'url', 'description', 'category', 'tags', 'logo', 'image',
+        'use_cases', 'audiences', 'platforms', 'pricing_model', 'alternatives',
+      ]
+      // deno-lint-ignore no-explicit-any
+      const updates: Record<string, any> = {}
+      for (const key of EDITABLE) if (sent[key] !== undefined) updates[key] = sent[key]
+      if (Object.keys(updates).length === 0) {
+        return new Response(
+          JSON.stringify({ error: `Nothing to update. Editable fields: ${EDITABLE.join(', ')}` }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
 
       if (!id || !token) {
         return new Response(

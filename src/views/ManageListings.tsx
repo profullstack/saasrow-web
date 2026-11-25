@@ -15,6 +15,8 @@ import { RedeemCodePanel } from '../components/RedeemCodePanel'
 import { callFn } from '@/lib/clientApi'
 import { adoptManagementToken } from '@/lib/member'
 import { BadgePanel } from '../components/BadgePanel'
+import { EnhancedEditor } from '../components/EnhancedEditor'
+import type { EnhancedListing } from '../lib/enhanced'
 
 interface SocialLink {
   id?: string
@@ -46,6 +48,7 @@ interface Submission {
   badge_checked_at?: string | null
   badge_grace_until?: string | null
   badge_exempt?: boolean | null
+  enhanced?: EnhancedListing | null
 }
 
 interface SubscriptionInfo {
@@ -833,6 +836,16 @@ export default function ManageListings() {
                         </span>
                       ))}
                     </div>
+
+                    {submission.status !== 'rejected' && (
+                      <EnhancedEditor
+                        listing={submission}
+                        managementToken={token ? decodeURIComponent(token) : undefined}
+                        onSaved={(enhanced) =>
+                          setSubmissions((prev) => prev.map((s) => (s.id === submission.id ? { ...s, enhanced } : s)))
+                        }
+                      />
+                    )}
 
                     {submission.status !== 'rejected' && (
                       <BadgePanel

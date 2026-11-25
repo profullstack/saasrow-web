@@ -618,6 +618,10 @@ export default function SubmitPage() {
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-[#4FFFE3] mt-0.5">✓</span>
+                      <span><strong>Enhanced listing</strong> - overview, features, pricing table, who it&apos;s for</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-[#4FFFE3] mt-0.5">✓</span>
                       <span>Dofollow backlink</span>
                     </li>
                     <li className="flex items-start gap-2">
@@ -708,6 +712,7 @@ export default function SubmitPage() {
                     {userTier === 'featured' && (
                       <>
                         <li className="text-[#4FFFE3] font-semibold">• Permanent listings: no SaaSRow badge to keep on your site</li>
+                        <li className="text-[#4FFFE3] font-semibold">• Enhanced listing: overview, feature list, pricing table and who it&apos;s for</li>
                         <li>• Dofollow backlink</li>
                         <li>• Up to 5 software listings</li>
                         <li>• Featured badge on listings</li>
