@@ -8,6 +8,8 @@ import { callFn } from '@/lib/clientApi'
 import { trackEvent, analyticsEvents } from '../lib/analytics'
 import VocabPicker from '../components/VocabPicker'
 import { BadgePanel } from '../components/BadgePanel'
+import { memberHeaders, useMember } from '@/lib/member'
+import { ADULT_CATEGORY, ADULT_LABEL, ADULT_NOTICE } from '@/lib/adultShared'
 import {
   USE_CASES,
   AUDIENCES,
@@ -64,6 +66,7 @@ export default function SubmitPage() {
   const [fetchedImagePath, setFetchedImagePath] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const { member } = useMember()
   // Free listings just submitted: each needs its badge on the site to go live.
   const [submittedListings, setSubmittedListings] = useState<Array<{ id: string; title: string; url: string; tier?: string }>>([])
   const [showEmailDialog, setShowEmailDialog] = useState(false)
@@ -261,6 +264,7 @@ export default function SubmitPage() {
 
       const response = await callFn('submissions', {
         method: 'POST',
+        headers: memberHeaders(),
         body: {
           ...formData,
           logo: uploadedLogoPath,
@@ -386,6 +390,7 @@ export default function SubmitPage() {
         try {
           const response = await callFn('submissions', {
             method: 'POST',
+            headers: memberHeaders(),
             body: {
               title: submission.title,
               url: submission.url,
@@ -1006,7 +1011,15 @@ export default function SubmitPage() {
                     <option value="Marketing">Marketing</option>
                     <option value="Analytics">Analytics</option>
                     <option value="Communication">Communication</option>
+                    {/* Members only: listed for signed-in members, shown to signed-in members. */}
+                    {member && <option value={ADULT_CATEGORY}>{ADULT_LABEL}</option>}
                   </select>
+                  {formData.category === ADULT_CATEGORY && (
+                    <p className="text-white/60 font-ubuntu text-sm mt-2">
+                      {ADULT_NOTICE} Listings in this category are shown to signed-in members only, never in the public
+                      directory, search, feeds or API.
+                    </p>
+                  )}
                 </div>
 
                 <div>

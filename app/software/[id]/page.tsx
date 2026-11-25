@@ -4,6 +4,9 @@ import SoftwareDetail from '@/views/SoftwareDetail'
 import JsonLd from '@/components/JsonLd'
 import { getSubmissionById, getPublicStorageUrl } from '@/lib/api'
 import { softwareApplicationLd, breadcrumbLd } from '@/lib/structuredData'
+import AdultListing from '@/views/AdultListing'
+import { isAdultListing } from '@/lib/adult'
+import { ADULT_LABEL } from '@/lib/adultShared'
 
 export const revalidate = 60
 
@@ -15,8 +18,9 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
   const { id } = await params
   const submission = await getSubmissionById(id)
   if (!submission) {
+    // An Adult (18+) listing gets a members-only shell: no name, no description.
     return {
-      title: 'Not Found',
+      title: (await isAdultListing(id)) ? ADULT_LABEL : 'Not Found',
       robots: { index: false, follow: false },
     }
   }
@@ -57,6 +61,9 @@ export default async function Page({ params }: RouteProps) {
   const { id } = await params
   const submission = await getSubmissionById(id)
   if (!submission) {
+    // Adult (18+): the page carries nothing about the listing. The view asks
+    // the member API for it, and shows a sign-in prompt to everyone else.
+    if (await isAdultListing(id)) return <AdultListing id={id} />
     notFound()
   }
   return (

@@ -16,7 +16,8 @@ interface Submission {
   email: string
   category: string
   // 'badge_required': approved by an admin, hidden until the free listing's site carries the badge.
-  status: 'pending' | 'approved' | 'rejected' | 'badge_required'
+  // 'adult': approved and live in the members-only Adult (18+) category.
+  status: 'pending' | 'approved' | 'rejected' | 'badge_required' | 'adult'
   submitted_at: string
   badge_verified_at?: string | null
   badge_exempt?: boolean
@@ -119,7 +120,7 @@ export default function AdminPage() {
   const [authMessage, setAuthMessage] = useState('')
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'badge_required'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'badge_required' | 'adult'>('all')
   const [bulkApproving, setBulkApproving] = useState(false)
   const [activeTab, setActiveTab] = useState<'submissions' | 'news' | 'newsletter' | 'users' | 'analytics' | 'comments' | 'autoblog'>('submissions')
   const [newsTopic, setNewsTopic] = useState('')
@@ -313,7 +314,9 @@ export default function AdminPage() {
         setAlertMessage(
           saved === 'badge_required'
             ? { type: 'info', message: 'Approved. It goes live when the site carries the SaaSRow badge; the owner has been emailed the HTML.' }
-            : { type: 'success', message: `Submission ${status} successfully` },
+            : saved === 'adult'
+              ? { type: 'success', message: 'Approved. It is live in the Adult (18+) category, visible to signed-in members only.' }
+              : { type: 'success', message: `Submission ${status} successfully` },
         )
       } else {
         const error = await response.json()
@@ -458,6 +461,7 @@ export default function AdminPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved':
+      case 'adult':
         return 'text-[#4FFFE3] bg-[#4FFFE3]/10 border-[#4FFFE3]'
       case 'rejected':
         return 'text-red-400 bg-red-400/10 border-red-400'
@@ -1382,7 +1386,7 @@ export default function AdminPage() {
           {activeTab === 'submissions' && (
             <>
               <div className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8">
-            {['all', 'pending', 'approved', 'badge_required', 'rejected'].map((status) => (
+            {['all', 'pending', 'approved', 'adult', 'badge_required', 'rejected'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status as typeof filter)}
@@ -1392,7 +1396,7 @@ export default function AdminPage() {
                     : 'bg-[#4a4a4a] text-white hover:bg-[#555555]'
                 }`}
               >
-                {status === 'badge_required' ? 'needs badge' : status} ({submissions.filter((s) => status === 'all' || s.status === status).length})
+                {status === 'badge_required' ? 'needs badge' : status === 'adult' ? 'adult (18+)' : status} ({submissions.filter((s) => status === 'all' || s.status === status).length})
               </button>
             ))}
             {approvableSubmissions.length > 0 && (
@@ -1444,7 +1448,7 @@ export default function AdminPage() {
                             submission.status
                           )}`}
                         >
-                          {submission.status === 'badge_required' ? 'needs badge' : submission.status}
+                          {submission.status === 'badge_required' ? 'needs badge' : submission.status === 'adult' ? 'live, adult (18+)' : submission.status}
                         </span>
                         <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-ubuntu bg-[#4a4a4a] text-white/70">
                           {submission.category}
@@ -1490,7 +1494,7 @@ export default function AdminPage() {
                           Waive badge
                         </button>
                       )}
-                      {submission.status !== 'approved' && submission.status !== 'badge_required' && (
+                      {submission.status !== 'approved' && submission.status !== 'adult' && submission.status !== 'badge_required' && (
                         <button
                           onClick={() => updateSubmissionStatus(submission.id, 'approved')}
                           className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu font-bold hover:bg-[#4FFFE3]/30 transition-colors text-sm"
@@ -2349,7 +2353,7 @@ export default function AdminPage() {
                                           Waive badge
                                         </button>
                                       )}
-                                      {submission.status !== 'approved' && submission.status !== 'badge_required' && (
+                                      {submission.status !== 'approved' && submission.status !== 'adult' && submission.status !== 'badge_required' && (
                                         <button
                                           onClick={() => updateSubmissionStatus(submission.id, 'approved')}
                                           className="px-3 py-1 rounded-lg bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu text-xs font-bold hover:bg-[#4FFFE3]/30 transition-colors"

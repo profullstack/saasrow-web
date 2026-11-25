@@ -67,7 +67,7 @@ Deno.serve(async (req: Request) => {
     await take(
       'live',
       table()
-        .eq('status', 'approved')
+        .in('status', ['approved', 'adult'])
         .or('badge_email_state.eq.required,and(badge_email_state.eq.notice,badge_verified_at.not.is.null)')
         .limit(budget),
     )
@@ -81,7 +81,7 @@ Deno.serve(async (req: Request) => {
     await take(
       'notice',
       table()
-        .eq('status', 'approved')
+        .in('status', ['approved', 'adult'])
         .is('badge_email_state', null)
         .is('badge_verified_at', null)
         .eq('badge_exempt', false)

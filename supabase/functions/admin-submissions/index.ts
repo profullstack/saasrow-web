@@ -105,7 +105,9 @@ Deno.serve(async (req: Request) => {
       // 'badge_required' (approved, hidden). It gets no "you are live" email
       // here; the badge-emails function sends it the badge instead, and the
       // live email once the badge is found.
-      if (data?.status === 'approved' && before?.status !== 'approved') {
+      // 'adult' is approved and live too, in the members-only Adult (18+) category.
+      const live = (s?: string) => s === 'approved' || s === 'adult'
+      if (live(data?.status) && !live(before?.status)) {
         const run = fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/complete-listing`, {
           method: 'POST',
           headers: {
