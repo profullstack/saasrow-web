@@ -79,10 +79,16 @@ BEGIN
     END IF;
   END IF;
 
+  needs := is_free
+    AND NOT NEW.badge_exempt
+    AND NEW.badge_verified_at IS NULL
+    AND (NEW.badge_grace_until IS NULL OR NEW.badge_grace_until <= now());
+
   -- A Featured or Premium account's new listing is inserted as 'free' like any
-  -- other; it takes the account's tier when it is approved, as its existing
-  -- listings did when the account paid.
-  IF is_free AND NEW.status IN ('approved', 'badge_required') THEN
+  -- other. When it would be held back for a badge, it takes the account's tier
+  -- instead, as the account's existing listings did when it paid. Only then:
+  -- a listing that is live anyway keeps the tier it has.
+  IF needs AND NEW.status IN ('approved', 'badge_required') THEN
     SELECT t.tier INTO owner_tier
     FROM submission_contacts c
     JOIN user_tokens t ON lower(t.email) = lower(c.email)
@@ -91,14 +97,9 @@ BEGIN
     LIMIT 1;
     IF owner_tier IS NOT NULL THEN
       NEW.tier := owner_tier;
-      is_free := false;
+      needs := false;
     END IF;
   END IF;
-
-  needs := is_free
-    AND NOT NEW.badge_exempt
-    AND NEW.badge_verified_at IS NULL
-    AND (NEW.badge_grace_until IS NULL OR NEW.badge_grace_until <= now());
 
   IF NEW.status = 'approved' AND needs THEN
     NEW.status := 'badge_required';
