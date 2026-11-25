@@ -602,8 +602,8 @@ export default function SubmitPage() {
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-[#4FFFE3] font-bold font-ubuntu text-lg">Featured Tier</h3>
                     <div className="text-right">
-                      <div className="text-white font-ubuntu text-sm">$1.60/mo</div>
-                      <div className="text-white/60 font-ubuntu text-xs">billed annually</div>
+                      <div className="text-white font-ubuntu text-sm">$2 lifetime</div>
+                      <div className="text-white/60 font-ubuntu text-xs">one payment, never renews</div>
                     </div>
                   </div>
                   <ul className="text-white/70 text-sm font-ubuntu space-y-2">

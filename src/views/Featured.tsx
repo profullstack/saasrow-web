@@ -103,7 +103,7 @@ export default function FeaturedPage() {
       oneTime: true,
       oneTimePrice: 2,
       features: [
-        '✅ One-time payment - no recurring fees',
+        '✅ $2 lifetime: one payment, no recurring fees',
         '✅ No expiration - Permanent listings',
         '✅ No badge required on your site',
         'Dofollow backlink',
@@ -148,7 +148,7 @@ export default function FeaturedPage() {
     },
     {
       question: 'How does pricing work?',
-      answer: 'Featured is a one-time $2. Premium is $5/month, $20/year or $199 once for lifetime access, and lifts every submission limit.',
+      answer: 'Featured is $2 lifetime (one payment, never renews). Premium is $5/month, $20/year or $199 once for lifetime access, and lifts every submission limit.',
     },
     {
       question: 'Are there any recurring charges?',
@@ -351,7 +351,7 @@ export default function FeaturedPage() {
           <AdUnit />
 
           <p className="text-[#4FFFE3] text-lg font-ubuntu font-bold mb-8">
-            Featured is a one-time $2. Premium lifts every limit from $5/month.
+            Featured is $2 lifetime: one payment, never renews. Premium lifts every limit from $5/month.
           </p>
           <p className="text-white/70 text-sm font-ubuntu -mt-6 mb-8">
             Pay with Bitcoin, Ethereum, Solana, USDC and other coins, or PayPal, on CoinPay checkout.
@@ -400,7 +400,7 @@ export default function FeaturedPage() {
                   <span className="text-white text-5xl font-bold font-ubuntu">
                     {getDisplayPrice(plan)}
                   </span>
-                  <span className="text-white/70 font-ubuntu">{plan.oneTime ? ' one-time' : '/month'}</span>
+                  <span className="text-white/70 font-ubuntu">{plan.oneTime ? ' lifetime' : '/month'}</span>
                 </div>
                 )}
                 {plan.oneTime && (

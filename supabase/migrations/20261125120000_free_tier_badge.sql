@@ -201,3 +201,7 @@ SELECT cron.schedule('badge-grace-sweep', '7 * * * *', $$ SELECT public.sweep_ba
 --       timeout_milliseconds := 120000
 --     )
 --   $job$);
+
+-- PostgREST caches the schema: without this, a migration applied by hand leaves
+-- the new columns and functions invisible to the API until the next restart.
+NOTIFY pgrst, 'reload schema';
