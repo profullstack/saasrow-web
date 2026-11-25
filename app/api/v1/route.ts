@@ -87,7 +87,7 @@ export function GET() {
           methods: ['GET', 'POST'],
           authentication: 'required',
           description:
-            'GET lists every listing you own, whatever its review status. POST submits a new free listing for review.',
+            'GET lists every listing you own, whatever its review status. POST submits a new free listing for review; it goes live once approved and its website carries the badge (see badge).',
           fields: listingFields,
         },
         listing: {
@@ -96,6 +96,13 @@ export function GET() {
           authentication: 'required',
           description:
             'One of your listings. PATCH accepts any subset of the create fields. DELETE is permanent.',
+        },
+        badge: {
+          url: `${base}/api/v1/listings/{id}/badge`,
+          methods: ['GET'],
+          authentication: 'required',
+          description:
+            'The badge for one of your listings. A free listing is live only while its website links back to its SaaSRow page; Featured and Premium do not need it. Returns whether it is required and verified, the HTML and Markdown to paste, and what to do next. POST {id}/badge/check re-checks the site now.',
         },
         keys: {
           url: `${base}/api/v1/keys`,

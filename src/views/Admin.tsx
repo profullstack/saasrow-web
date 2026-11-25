@@ -15,8 +15,11 @@ interface Submission {
   description: string
   email: string
   category: string
-  status: 'pending' | 'approved' | 'rejected'
+  // 'badge_required': approved by an admin, hidden until the free listing's site carries the badge.
+  status: 'pending' | 'approved' | 'rejected' | 'badge_required'
   submitted_at: string
+  badge_verified_at?: string | null
+  badge_exempt?: boolean
   logo?: string
   image?: string
   tags?: string[]
@@ -116,7 +119,7 @@ export default function AdminPage() {
   const [authMessage, setAuthMessage] = useState('')
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'badge_required'>('all')
   const [bulkApproving, setBulkApproving] = useState(false)
   const [activeTab, setActiveTab] = useState<'submissions' | 'news' | 'newsletter' | 'users' | 'analytics' | 'comments' | 'autoblog'>('submissions')
   const [newsTopic, setNewsTopic] = useState('')
@@ -262,6 +265,29 @@ export default function AdminPage() {
     }
   }
 
+  /** A free listing an admin approves stays hidden until its site carries the badge; this lets it through without one. */
+  const waiveBadge = async (id: string) => {
+    try {
+      const token = sessionStorage.getItem('adminToken')
+      if (!token) {
+        setAlertMessage({ type: 'error', message: 'Admin authentication required' })
+        return
+      }
+      const response = await callFn('admin-submissions', { method: 'PATCH', body: { id, badge_exempt: true }, adminToken: token })
+      const body = await response.json().catch(() => null)
+      if (response.ok) {
+        setSubmissions((prev) => prev.map((sub) => (sub.id === id ? { ...sub, badge_exempt: true, status: body?.data?.status ?? sub.status } : sub)))
+        fetchAnalytics()
+        setAlertMessage({ type: 'success', message: 'Badge waived: the listing is live without it.' })
+      } else {
+        setAlertMessage({ type: 'error', message: body?.error || 'Failed to waive the badge' })
+      }
+    } catch (error) {
+      console.error('Failed to waive badge:', error)
+      setAlertMessage({ type: 'error', message: 'Failed to waive the badge' })
+    }
+  }
+
   const updateSubmissionStatus = async (id: string, status: 'approved' | 'rejected') => {
     try {
       const token = sessionStorage.getItem('adminToken')
@@ -277,11 +303,18 @@ export default function AdminPage() {
       })
 
       if (response.ok) {
+        // The database has the last word: an approved free listing with no
+        // badge on its site comes back 'badge_required'.
+        const saved = ((await response.json().catch(() => null))?.data?.status ?? status) as Submission['status']
         setSubmissions((prev) =>
-          prev.map((sub) => (sub.id === id ? { ...sub, status } : sub))
+          prev.map((sub) => (sub.id === id ? { ...sub, status: saved } : sub))
         )
         fetchAnalytics()
-        setAlertMessage({ type: 'success', message: `Submission ${status} successfully` })
+        setAlertMessage(
+          saved === 'badge_required'
+            ? { type: 'info', message: 'Approved. It goes live when the site carries the SaaSRow badge; the owner has been emailed the HTML.' }
+            : { type: 'success', message: `Submission ${status} successfully` },
+        )
       } else {
         const error = await response.json()
         console.error('Failed to update submission:', error)
@@ -366,6 +399,7 @@ export default function AdminPage() {
     setBulkApproving(true)
 
     const approved: string[] = []
+    const saved = new Map<string, Submission['status']>()
     let failed = 0
 
     // Approve in small batches so a long pending queue does not open one
@@ -383,6 +417,7 @@ export default function AdminPage() {
             })
             if (response.ok) {
               approved.push(id)
+              saved.set(id, ((await response.json().catch(() => null))?.data?.status ?? 'approved') as Submission['status'])
             } else {
               failed++
               console.error('Failed to approve submission:', id, await response.text())
@@ -398,7 +433,7 @@ export default function AdminPage() {
     if (approved.length > 0) {
       const approvedIds = new Set(approved)
       setSubmissions((prev) =>
-        prev.map((sub) => (approvedIds.has(sub.id) ? { ...sub, status: 'approved' as const } : sub))
+        prev.map((sub) => (approvedIds.has(sub.id) ? { ...sub, status: saved.get(sub.id) ?? ('approved' as const) } : sub))
       )
       fetchAnalytics()
     }
@@ -408,7 +443,7 @@ export default function AdminPage() {
     if (failed === 0) {
       setAlertMessage({
         type: 'success',
-        message: `Approved ${approved.length} submission${approved.length === 1 ? '' : 's'}. Logos, images and screenshots are being generated in the background.`,
+        message: `Approved ${approved.length} submission${approved.length === 1 ? '' : 's'}. Free listings go live when their site carries the badge (their owners are emailed the HTML); logos, images and screenshots are generated in the background.`,
       })
     } else if (approved.length === 0) {
       setAlertMessage({ type: 'error', message: `Failed to approve ${failed} submission${failed === 1 ? '' : 's'}` })
@@ -1347,7 +1382,7 @@ export default function AdminPage() {
           {activeTab === 'submissions' && (
             <>
               <div className="flex flex-wrap gap-2 sm:gap-4 mb-6 sm:mb-8">
-            {['all', 'pending', 'approved', 'rejected'].map((status) => (
+            {['all', 'pending', 'approved', 'badge_required', 'rejected'].map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status as typeof filter)}
@@ -1357,7 +1392,7 @@ export default function AdminPage() {
                     : 'bg-[#4a4a4a] text-white hover:bg-[#555555]'
                 }`}
               >
-                {status} ({submissions.filter((s) => status === 'all' || s.status === status).length})
+                {status === 'badge_required' ? 'needs badge' : status} ({submissions.filter((s) => status === 'all' || s.status === status).length})
               </button>
             ))}
             {approvableSubmissions.length > 0 && (
@@ -1409,7 +1444,7 @@ export default function AdminPage() {
                             submission.status
                           )}`}
                         >
-                          {submission.status}
+                          {submission.status === 'badge_required' ? 'needs badge' : submission.status}
                         </span>
                         <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-ubuntu bg-[#4a4a4a] text-white/70">
                           {submission.category}
@@ -1446,7 +1481,16 @@ export default function AdminPage() {
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2 mt-4">
                     <div className="flex gap-2 flex-wrap">
-                      {submission.status !== 'approved' && (
+                      {submission.status === 'badge_required' && (
+                        <button
+                          onClick={() => waiveBadge(submission.id)}
+                          title="Approved already; hidden until the site carries the badge. This lets it through without one."
+                          className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg bg-[#E0FF04]/20 text-[#E0FF04] border border-[#E0FF04] font-ubuntu font-bold hover:bg-[#E0FF04]/30 transition-colors text-sm"
+                        >
+                          Waive badge
+                        </button>
+                      )}
+                      {submission.status !== 'approved' && submission.status !== 'badge_required' && (
                         <button
                           onClick={() => updateSubmissionStatus(submission.id, 'approved')}
                           className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu font-bold hover:bg-[#4FFFE3]/30 transition-colors text-sm"
@@ -2297,7 +2341,15 @@ export default function AdminPage() {
                                       </div>
                                     </div>
                                     <div className="flex gap-2">
-                                      {submission.status !== 'approved' && (
+                                      {submission.status === 'badge_required' && (
+                                        <button
+                                          onClick={() => waiveBadge(submission.id)}
+                                          className="px-3 py-1 rounded-lg bg-[#E0FF04]/20 text-[#E0FF04] border border-[#E0FF04] font-ubuntu text-xs font-bold hover:bg-[#E0FF04]/30 transition-colors"
+                                        >
+                                          Waive badge
+                                        </button>
+                                      )}
+                                      {submission.status !== 'approved' && submission.status !== 'badge_required' && (
                                         <button
                                           onClick={() => updateSubmissionStatus(submission.id, 'approved')}
                                           className="px-3 py-1 rounded-lg bg-[#4FFFE3]/20 text-[#4FFFE3] border border-[#4FFFE3] font-ubuntu text-xs font-bold hover:bg-[#4FFFE3]/30 transition-colors"

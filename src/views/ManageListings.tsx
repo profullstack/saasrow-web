@@ -14,6 +14,7 @@ import { WebhooksPanel } from '../components/WebhooksPanel'
 import { RedeemCodePanel } from '../components/RedeemCodePanel'
 import { callFn } from '@/lib/clientApi'
 import { adoptManagementToken } from '@/lib/member'
+import { BadgePanel } from '../components/BadgePanel'
 
 interface SocialLink {
   id?: string
@@ -41,6 +42,10 @@ interface Submission {
   expires_at?: string | null
   last_renewed_at?: string | null
   renewal_count?: number
+  badge_verified_at?: string | null
+  badge_checked_at?: string | null
+  badge_grace_until?: string | null
+  badge_exempt?: boolean | null
 }
 
 interface SubscriptionInfo {
@@ -865,7 +870,7 @@ export default function ManageListings() {
                               : 'bg-yellow-100 text-yellow-800'
                           }`}
                         >
-                          {submission.status}
+                          {submission.status === 'badge_required' ? 'needs badge' : submission.status}
                         </span>
                         <button
                           onClick={() => handleEdit(submission)}
@@ -889,6 +894,28 @@ export default function ManageListings() {
                       ))}
                     </div>
 
+                    {submission.status !== 'rejected' && (
+                      <BadgePanel
+                        listing={submission}
+                        managementToken={token ? decodeURIComponent(token) : undefined}
+                        onChecked={(patch) =>
+                          setSubmissions((prev) =>
+                            prev.map((s) =>
+                              s.id === submission.id
+                                ? {
+                                    ...s,
+                                    status: patch.status ?? s.status,
+                                    badge_verified_at: patch.badge_verified_at ?? null,
+                                    badge_checked_at: patch.badge_checked_at ?? null,
+                                    badge_grace_until: patch.badge_grace_until ?? s.badge_grace_until,
+                                  }
+                                : s,
+                            ),
+                          )
+                        }
+                      />
+                    )}
+
                     {(!submission.tier || submission.tier === 'free') && (
                       <div className="bg-gradient-to-r from-[#4FFFE3]/10 to-[#E0FF04]/10 border border-[#4FFFE3]/20 rounded-xl p-4 mb-4">
                         <h3 className="font-bold text-white mb-2 flex items-center gap-2 font-ubuntu">
@@ -901,6 +928,7 @@ export default function ManageListings() {
                           <li>✓ Monthly performance analytics</li>
                           <li>✓ Logo in category pages</li>
                           <li>✓ Social media mentions</li>
+                          <li className="text-yellow-400">⚠️ Live only while your site carries the SaaSRow badge</li>
                           <li className="text-yellow-400">⚠️ Listings expire after 90 days (renewable)</li>
                         </ul>
                         {submission.expires_at && (

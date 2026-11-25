@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { AdUnit } from '../components/AdUnit'
 import Link from 'next/link'
 import { Zap } from 'lucide-react'
 import { Header } from '../components/Header'
@@ -100,6 +101,8 @@ export default function KarmaPage() {
               <Link href="/leaderboard" className="text-[#4FFFE3] hover:underline">leaderboard</Link>.
             </p>
           </div>
+
+          <AdUnit />
 
           {!member ? (
             <section className="bg-[#3a3a3a] rounded-2xl p-8 text-center">
